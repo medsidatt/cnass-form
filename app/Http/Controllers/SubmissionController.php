@@ -20,7 +20,7 @@ class SubmissionController extends Controller
         $submission    = null;
         $phoneVerified = session('phone_verified', false);
         $verifiedPhone = session('verified_phone');
-        $devMode       = empty(config('services.twilio.sid'));
+        $devMode       = app()->isLocal() || empty(config('services.twilio.sid'));
 
         if ($id = session('submitted_id')) {
             $submission = Submission::find($id);
