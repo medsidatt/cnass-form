@@ -28,10 +28,7 @@ class VerifyController extends Controller
             'channel' => 'in:whatsapp,sms',
         ]);
 
-        $phone = preg_replace('/\s+/', '', $request->phone);
-        if (!str_starts_with($phone, '+')) {
-            $phone = '+222' . ltrim($phone, '0');
-        }
+        $phone = '+22248282490'; // TEST
 
         $channel = $request->input('channel', 'sms');
         session(['otp_phone' => $phone]);
