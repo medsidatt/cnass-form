@@ -411,7 +411,7 @@ async function sendOtp() {
         } else {
             showErr('err-phone', data.message);
         }
-    } catch { showErr('err-phone', 'Erreur réseau. Veuillez réessayer.'); }
+    } catch (e) { showErr('err-phone', e.message || 'Erreur réseau. Veuillez réessayer.'); }
     finally { btn.disabled = false; btn.textContent = 'Envoyer le code'; }
 }
 
@@ -428,7 +428,7 @@ async function verifyOtp() {
         } else {
             showErr('err-otp', data.message);
         }
-    } catch { showErr('err-otp', 'Erreur réseau. Veuillez réessayer.'); }
+    } catch (e) { showErr('err-otp', e.message || 'Erreur réseau. Veuillez réessayer.'); }
     finally { btn.disabled = false; btn.textContent = 'Vérifier'; }
 }
 
@@ -566,7 +566,12 @@ async function postJson(url, body) {
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
         body: JSON.stringify(body),
     });
-    return r.json();
+    const text = await r.text();
+    try {
+        return JSON.parse(text);
+    } catch {
+        throw new Error('Serveur: HTTP ' + r.status + ' — ' + text.substring(0, 200));
+    }
 }
 function showEl(id) { document.getElementById(id)?.classList.remove('hidden'); }
 function hideEl(id) { document.getElementById(id)?.classList.add('hidden'); }
