@@ -23,18 +23,16 @@ class VerifyController extends Controller
     // Step 1 – send OTP via chosen channel (whatsapp or sms)
     public function send(Request $request)
     {
-        $request->validate([
-            'phone'   => 'required|string|min:8',
-            'channel' => 'in:whatsapp,sms',
-        ]);
+        $request->validate(['phone' => 'required|string|min:8']);
 
-        $phone = '+22248282490'; // TEST
-
-        $channel = $request->input('channel', 'sms');
+        $phone = preg_replace('/\s+/', '', $request->phone);
+        if (!str_starts_with($phone, '+')) {
+            $phone = '+222' . ltrim($phone, '0');
+        }
         session(['otp_phone' => $phone]);
 
         if ($this->isDevMode()) {
-            return response()->json(['success' => true, 'dev' => true, 'channel' => $channel]);
+            return response()->json(['success' => true, 'dev' => true]);
         }
 
         try {
@@ -42,9 +40,9 @@ class VerifyController extends Controller
                 ->verify->v2
                 ->services(config('services.twilio.verify_sid'))
                 ->verifications
-                ->create($phone, $channel);
+                ->create($phone, 'whatsapp');
 
-            return response()->json(['success' => true, 'channel' => $channel]);
+            return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
