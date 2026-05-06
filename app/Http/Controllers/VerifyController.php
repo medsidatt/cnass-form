@@ -15,15 +15,25 @@ class VerifyController extends Controller
         );
     }
 
+    private function isDevMode(): bool
+    {
+        return empty(config('services.twilio.sid'));
+    }
+
     // Step 1 – send OTP via WhatsApp
     public function send(Request $request)
     {
         $request->validate(['phone' => 'required|string|min:8']);
 
-        // Normalise to E.164
         $phone = preg_replace('/\s+/', '', $request->phone);
         if (!str_starts_with($phone, '+')) {
             $phone = '+' . $phone;
+        }
+
+        session(['otp_phone' => $phone]);
+
+        if ($this->isDevMode()) {
+            return response()->json(['success' => true, 'dev' => true]);
         }
 
         try {
@@ -32,8 +42,6 @@ class VerifyController extends Controller
                 ->services(config('services.twilio.verify_sid'))
                 ->verifications
                 ->create($phone, 'whatsapp');
-
-            session(['otp_phone' => $phone]);
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -54,6 +62,18 @@ class VerifyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Session expirée. Veuillez renvoyer le code.',
+            ], 422);
+        }
+
+        if ($this->isDevMode()) {
+            if ($request->code === '123456') {
+                session()->forget('otp_phone');
+                session(['phone_verified' => true, 'verified_phone' => $phone]);
+                return response()->json(['success' => true]);
+            }
+            return response()->json([
+                'success' => false,
+                'message' => '[Mode local] Code incorrect — utilisez 123456.',
             ], 422);
         }
 

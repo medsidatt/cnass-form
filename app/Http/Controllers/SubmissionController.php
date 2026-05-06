@@ -20,12 +20,13 @@ class SubmissionController extends Controller
         $submission    = null;
         $phoneVerified = session('phone_verified', false);
         $verifiedPhone = session('verified_phone');
+        $devMode       = empty(config('services.twilio.sid'));
 
         if ($id = session('submitted_id')) {
             $submission = Submission::find($id);
         }
 
-        return view('form', compact('submission', 'phoneVerified', 'verifiedPhone'));
+        return view('form', compact('submission', 'phoneVerified', 'verifiedPhone', 'devMode'));
     }
 
     public function store(Request $request)

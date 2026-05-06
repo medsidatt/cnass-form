@@ -142,6 +142,14 @@
                 <h2>Vérification via WhatsApp</h2>
                 <p class="sub">Un code à 6 chiffres sera envoyé sur votre numéro WhatsApp pour confirmer votre identité.</p>
 
+                {{-- Dev mode hint --}}
+                @if($devMode)
+                <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:.8rem;color:#92400e;">
+                    🛠 <strong>Mode local</strong> — Twilio non configuré.<br>
+                    Entrez n'importe quel numéro, puis utilisez le code <strong>123456</strong>.
+                </div>
+                @endif
+
                 {{-- Phone entry --}}
                 <div id="phone-step">
                     <div id="err-phone" class="alert alert-error hidden"></div>
@@ -326,7 +334,14 @@ async function sendOtp() {
         if (data.success) {
             document.getElementById('phone-display').textContent = phone;
             document.getElementById('phone-step').classList.add('hidden');
-            document.getElementById('otp-step').classList.remove('hidden');
+            const otpStep = document.getElementById('otp-step');
+            otpStep.classList.remove('hidden');
+            if (data.dev) {
+                const hint = document.createElement('p');
+                hint.style.cssText = 'font-size:.78rem;color:#92400e;margin-bottom:10px';
+                hint.textContent = '🛠 Mode local : entrez 123456';
+                otpStep.insertBefore(hint, otpStep.firstChild);
+            }
         } else {
             showErr('err-phone', data.message);
         }
