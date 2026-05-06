@@ -17,7 +17,7 @@ class VerifyController extends Controller
 
     private function isDevMode(): bool
     {
-        return app()->isLocal() || empty(config('services.twilio.sid'));
+        return empty(config('services.twilio.sid')) || empty(config('services.twilio.verify_sid'));
     }
 
     // Step 1 – send OTP via WhatsApp
