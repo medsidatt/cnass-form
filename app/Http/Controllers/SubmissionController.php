@@ -17,11 +17,15 @@ class SubmissionController extends Controller
 {
     public function form()
     {
-        $submission = null;
+        $submission    = null;
+        $phoneVerified = session('phone_verified', false);
+        $verifiedPhone = session('verified_phone');
+
         if ($id = session('submitted_id')) {
             $submission = Submission::find($id);
         }
-        return view('form', compact('submission'));
+
+        return view('form', compact('submission', 'phoneVerified', 'verifiedPhone'));
     }
 
     public function store(Request $request)
@@ -85,6 +89,7 @@ class SubmissionController extends Controller
 
         $submission = Submission::create([
             'nom_complet'         => $request->nom_complet,
+            'phone'               => session('verified_phone'),
             'situation_familiale' => $request->situation_familiale,
             'ci_employe'          => $ci_employe,
             'photo_employe'       => $photo_employe,
@@ -113,7 +118,7 @@ class SubmissionController extends Controller
 
     public function resetSession()
     {
-        session()->forget('submitted_id');
+        session()->forget(['submitted_id', 'phone_verified', 'verified_phone', 'otp_phone']);
         return redirect()->route('form');
     }
 

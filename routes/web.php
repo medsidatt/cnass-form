@@ -1,9 +1,14 @@
 <?php
 
 use App\Http\Controllers\SubmissionController;
+use App\Http\Controllers\VerifyController;
 use Illuminate\Support\Facades\Route;
 
-// Public form
+// WhatsApp OTP verification
+Route::post('/verify/send',  [VerifyController::class, 'send'])->name('verify.send');
+Route::post('/verify/check', [VerifyController::class, 'check'])->name('verify.check');
+
+// Public form (requires phone verification via session)
 Route::get('/',        [SubmissionController::class, 'form'])->name('form');
 Route::post('/submit', [SubmissionController::class, 'store'])->name('submit');
 
