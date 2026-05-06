@@ -17,16 +17,18 @@ class SubmissionController extends Controller
 {
     public function form()
     {
-        $submission    = null;
         $phoneVerified = session('phone_verified', false);
         $verifiedPhone = session('verified_phone');
-        $devMode       = app()->isLocal() || empty(config('services.twilio.sid'));
+        $existing      = null;
 
-        if ($id = session('submitted_id')) {
-            $submission = Submission::find($id);
+        if ($phoneVerified && $verifiedPhone) {
+            $existing = Submission::where('phone', $verifiedPhone)->latest()->first();
+            if ($existing) {
+                session(['submitted_id' => $existing->id]);
+            }
         }
 
-        return view('form', compact('submission', 'phoneVerified', 'verifiedPhone', 'devMode'));
+        return view('form', compact('phoneVerified', 'verifiedPhone', 'existing'));
     }
 
     public function store(Request $request)
@@ -36,39 +38,45 @@ class SubmissionController extends Controller
             'situation_familiale' => 'required|string',
         ]);
 
-        $folder = 'submissions/' . Str::slug($request->nom_complet) . '_' . time();
+        // Determine if this is an update
+        $existing = session('submitted_id') ? Submission::find(session('submitted_id')) : null;
 
-        $storeFile = function ($file, $name) use ($folder) {
-            if (!$file) return null;
-            $ext  = $file->getClientOriginalExtension();
+        // Reuse existing folder or create new one
+        if ($existing) {
+            $anyPath = $existing->ci_employe ?? $existing->photo_employe
+                    ?? $existing->ci_pere    ?? $existing->ci_mere;
+            $folder  = $anyPath
+                ? dirname($anyPath)
+                : 'submissions/' . Str::slug($request->nom_complet) . '_' . $existing->created_at->timestamp;
+        } else {
+            $folder = 'submissions/' . Str::slug($request->nom_complet) . '_' . time();
+        }
+
+        // Store new file or fall back to old path
+        $storeFile = function ($file, $name, $oldPath = null) use ($folder) {
+            if (!$file) return $oldPath;
+            $ext = $file->getClientOriginalExtension();
             return $file->storeAs($folder, $name . '.' . $ext, 'public');
         };
 
-        // Employé
-        $ci_employe    = $storeFile($request->file('ci_employe'),    'ci_employe');
-        $photo_employe = $storeFile($request->file('photo_employe'), 'photo_employe');
+        $ci_employe    = $storeFile($request->file('ci_employe'),    'ci_employe',    $existing?->ci_employe);
+        $photo_employe = $storeFile($request->file('photo_employe'), 'photo_employe', $existing?->photo_employe);
+        $ci_pere       = $storeFile($request->file('ci_pere'),       'ci_pere',       $existing?->ci_pere);
+        $photo_pere    = $storeFile($request->file('photo_pere'),    'photo_pere',    $existing?->photo_pere);
+        $ci_mere       = $storeFile($request->file('ci_mere'),       'ci_mere',       $existing?->ci_mere);
+        $photo_mere    = $storeFile($request->file('photo_mere'),    'photo_mere',    $existing?->photo_mere);
+        $ci_conjoint   = $storeFile($request->file('ci_conjoint'),   'ci_conjoint',   $existing?->ci_conjoint);
+        $photo_conjoint= $storeFile($request->file('photo_conjoint'),'photo_conjoint',$existing?->photo_conjoint);
 
-        // Père
-        $ci_pere    = $storeFile($request->file('ci_pere'),    'ci_pere');
-        $photo_pere = $storeFile($request->file('photo_pere'), 'photo_pere');
-
-        // Mère
-        $ci_mere    = $storeFile($request->file('ci_mere'),    'ci_mere');
-        $photo_mere = $storeFile($request->file('photo_mere'), 'photo_mere');
-
-        // Conjoint(e)
-        $ci_conjoint    = $storeFile($request->file('ci_conjoint'),    'ci_conjoint');
-        $photo_conjoint = $storeFile($request->file('photo_conjoint'), 'photo_conjoint');
-
-        // Fratrie combinée (frères + sœurs) avec nom et type
+        // Fratrie (combined) – preserve old file paths via hidden inputs
         $freres = [];
         $soeurs = [];
         $count  = (int) $request->input('fratrie_count', 0);
         for ($i = 0; $i < $count; $i++) {
             $item = [
                 'nom'   => $request->input("fratrie_nom_$i"),
-                'ci'    => $storeFile($request->file("fratrie_ci_$i"),    "fratrie_{$i}_ci"),
-                'photo' => $storeFile($request->file("fratrie_photo_$i"), "fratrie_{$i}_photo"),
+                'ci'    => $storeFile($request->file("fratrie_ci_$i"),    "fratrie_{$i}_ci",    $request->input("fratrie_ci_old_$i")),
+                'photo' => $storeFile($request->file("fratrie_photo_$i"), "fratrie_{$i}_photo", $request->input("fratrie_photo_old_$i")),
             ];
             if ($request->input("fratrie_type_$i") === 'soeur') {
                 $soeurs[] = $item;
@@ -77,18 +85,18 @@ class SubmissionController extends Controller
             }
         }
 
-        // Descendants avec nom
+        // Descendants – preserve old file paths via hidden inputs
         $descendants = [];
         $dcount = (int) $request->input('descendants_count', 0);
         for ($i = 0; $i < $dcount; $i++) {
             $descendants[] = [
                 'nom'   => $request->input("descendant_nom_$i"),
-                'ci'    => $storeFile($request->file("descendant_ci_$i"),    "descendant_{$i}_ci"),
-                'photo' => $storeFile($request->file("descendant_photo_$i"), "descendant_{$i}_photo"),
+                'ci'    => $storeFile($request->file("descendant_ci_$i"),    "descendant_{$i}_ci",    $request->input("descendant_ci_old_$i")),
+                'photo' => $storeFile($request->file("descendant_photo_$i"), "descendant_{$i}_photo", $request->input("descendant_photo_old_$i")),
             ];
         }
 
-        $submission = Submission::create([
+        $data = [
             'nom_complet'         => $request->nom_complet,
             'phone'               => session('verified_phone'),
             'situation_familiale' => $request->situation_familiale,
@@ -106,13 +114,20 @@ class SubmissionController extends Controller
             'ci_conjoint'         => $ci_conjoint,
             'photo_conjoint'      => $photo_conjoint,
             'descendants'         => $descendants,
-        ]);
+        ];
+
+        if ($existing) {
+            $existing->update($data);
+            $submission = $existing;
+        } else {
+            $submission = Submission::create($data);
+        }
 
         session(['submitted_id' => $submission->id]);
 
         return response()->json([
             'success'       => true,
-            'message'       => 'Fiche soumise avec succès !',
+            'updated'       => (bool) $existing,
             'submission_id' => $submission->id,
         ]);
     }
@@ -123,11 +138,10 @@ class SubmissionController extends Controller
         return redirect()->route('form');
     }
 
-    // Per-submission Excel download (session-protected)
     public function download(Submission $submission)
     {
         if (session('submitted_id') !== $submission->id) {
-            abort(403, 'Accès non autorisé.');
+            abort(403);
         }
 
         $writer   = new Xlsx($this->buildSpreadsheet(collect([$submission])));
@@ -140,20 +154,17 @@ class SubmissionController extends Controller
         ]);
     }
 
-    // Admin dashboard
     public function index()
     {
         $submissions = Submission::latest()->get();
         return view('admin.index', compact('submissions'));
     }
 
-    // Admin – single submission
     public function show(Submission $submission)
     {
         return view('admin.show', compact('submission'));
     }
 
-    // Admin – export all as Excel
     public function exportExcel()
     {
         $submissions = Submission::latest()->get();
@@ -167,11 +178,9 @@ class SubmissionController extends Controller
         ]);
     }
 
-    // ── Shared spreadsheet builder ────────────────────────────────────────────
     private function buildSpreadsheet(\Illuminate\Support\Collection $submissions): Spreadsheet
     {
-        $baseUrl = config('app.url');
-
+        $baseUrl     = config('app.url');
         $spreadsheet = new Spreadsheet();
         $sheet       = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Soumissions');
@@ -191,13 +200,8 @@ class SubmissionController extends Controller
         $row = 2;
 
         $writeRow = function (
-            string  $type,
-            ?string $nom,
-            ?string $situation,
-            ?string $ciPath,
-            ?string $photoPath,
-            ?string $date,
-            string  $bgColor
+            string $type, ?string $nom, ?string $situation,
+            ?string $ciPath, ?string $photoPath, ?string $date, string $bgColor
         ) use ($sheet, &$row, $coord, $baseUrl) {
             $sheet->fromArray([$type, $nom ?? '', $situation ?? '', '', '', $date ?? ''], null, "A{$row}");
             $sheet->getStyle("A{$row}:F{$row}")->applyFromArray([
@@ -209,72 +213,36 @@ class SubmissionController extends Controller
                 $c = $coord(4, $row);
                 $sheet->setCellValue($c, 'Voir CI');
                 $sheet->getCell($c)->setHyperlink(new Hyperlink($baseUrl . '/storage/' . $ciPath, 'Voir CI'));
-                $sheet->getStyle($c)->applyFromArray([
-                    'font' => ['color' => ['rgb' => '1155CC'], 'underline' => Font::UNDERLINE_SINGLE],
-                ]);
+                $sheet->getStyle($c)->applyFromArray(['font' => ['color' => ['rgb' => '1155CC'], 'underline' => Font::UNDERLINE_SINGLE]]);
             }
             if ($photoPath) {
                 $c = $coord(5, $row);
                 $sheet->setCellValue($c, 'Voir Photo');
                 $sheet->getCell($c)->setHyperlink(new Hyperlink($baseUrl . '/storage/' . $photoPath, 'Voir Photo'));
-                $sheet->getStyle($c)->applyFromArray([
-                    'font' => ['color' => ['rgb' => '1155CC'], 'underline' => Font::UNDERLINE_SINGLE],
-                ]);
+                $sheet->getStyle($c)->applyFromArray(['font' => ['color' => ['rgb' => '1155CC'], 'underline' => Font::UNDERLINE_SINGLE]]);
             }
             $row++;
         };
 
         $colors = [
-            'employe'    => 'DDEEFF',
-            'pere'       => 'FFF9E6',
-            'mere'       => 'FFF9E6',
-            'conjoint'   => 'E8F5E9',
-            'descendant' => 'F3E5F5',
-            'sibling'    => 'FFF3E0',
+            'employe' => 'DDEEFF', 'pere' => 'FFF9E6', 'mere' => 'FFF9E6',
+            'conjoint' => 'E8F5E9', 'descendant' => 'F3E5F5', 'sibling' => 'FFF3E0',
         ];
 
         foreach ($submissions as $s) {
             $date = $s->created_at->format('d/m/Y H:i');
-
-            $writeRow('Employé', $s->nom_complet, $s->situation_familiale,
-                      $s->ci_employe, $s->photo_employe, $date, $colors['employe']);
-
-            if ($s->nom_pere || $s->ci_pere || $s->photo_pere) {
-                $writeRow('Père', $s->nom_pere, null,
-                          $s->ci_pere, $s->photo_pere, null, $colors['pere']);
-            }
-
-            if ($s->nom_mere || $s->ci_mere || $s->photo_mere) {
-                $writeRow('Mère', $s->nom_mere, null,
-                          $s->ci_mere, $s->photo_mere, null, $colors['mere']);
-            }
-
-            if ($s->nom_conjoint || $s->ci_conjoint || $s->photo_conjoint) {
-                $writeRow('Conjoint(e)', $s->nom_conjoint, null,
-                          $s->ci_conjoint, $s->photo_conjoint, null, $colors['conjoint']);
-            }
-
-            foreach ($s->descendants ?? [] as $i => $d) {
-                $writeRow('Descendant ' . ($i + 1), $d['nom'] ?? null, null,
-                          $d['ci'] ?? null, $d['photo'] ?? null, null, $colors['descendant']);
-            }
-
-            foreach ($s->freres ?? [] as $i => $f) {
-                $writeRow('Frère ' . ($i + 1), $f['nom'] ?? null, null,
-                          $f['ci'] ?? null, $f['photo'] ?? null, null, $colors['sibling']);
-            }
-
-            foreach ($s->soeurs ?? [] as $i => $sr) {
-                $writeRow('Sœur ' . ($i + 1), $sr['nom'] ?? null, null,
-                          $sr['ci'] ?? null, $sr['photo'] ?? null, null, $colors['sibling']);
-            }
-
-            $row++; // blank separator
+            $writeRow('Employé',    $s->nom_complet,  $s->situation_familiale, $s->ci_employe,  $s->photo_employe,  $date, $colors['employe']);
+            if ($s->nom_pere   || $s->ci_pere   || $s->photo_pere)   $writeRow('Père',       $s->nom_pere,    null, $s->ci_pere,    $s->photo_pere,    null, $colors['pere']);
+            if ($s->nom_mere   || $s->ci_mere   || $s->photo_mere)   $writeRow('Mère',       $s->nom_mere,    null, $s->ci_mere,    $s->photo_mere,    null, $colors['mere']);
+            if ($s->nom_conjoint||$s->ci_conjoint||$s->photo_conjoint)$writeRow('Conjoint(e)',$s->nom_conjoint,null,$s->ci_conjoint,$s->photo_conjoint,null, $colors['conjoint']);
+            foreach ($s->descendants ?? [] as $i => $d) $writeRow('Descendant '.($i+1), $d['nom']??null, null, $d['ci']??null, $d['photo']??null, null, $colors['descendant']);
+            foreach ($s->freres    ?? [] as $i => $f) $writeRow('Frère '.($i+1),       $f['nom']??null, null, $f['ci']??null, $f['photo']??null, null, $colors['sibling']);
+            foreach ($s->soeurs    ?? [] as $i => $sr)$writeRow('Sœur '.($i+1),        $sr['nom']??null,null, $sr['ci']??null,$sr['photo']??null,null, $colors['sibling']);
+            $row++;
         }
 
         foreach (range(1, 6) as $colIndex) {
-            $letter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-            $sheet->getColumnDimension($letter)->setAutoSize(true);
+            $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex))->setAutoSize(true);
         }
 
         return $spreadsheet;
