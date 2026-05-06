@@ -27,7 +27,7 @@ class VerifyController extends Controller
 
         $phone = preg_replace('/\s+/', '', $request->phone);
         if (!str_starts_with($phone, '+')) {
-            $phone = '+' . $phone;
+            $phone = '+222' . ltrim($phone, '0');
         }
 
         session(['otp_phone' => $phone]);
@@ -36,19 +36,21 @@ class VerifyController extends Controller
             return response()->json(['success' => true, 'dev' => true]);
         }
 
-        try {
-            $this->twilio()
-                ->verify->v2
-                ->services(config('services.twilio.verify_sid'))
-                ->verifications
-                ->create($phone, 'whatsapp');
+        $verify = $this->twilio()->verify->v2->services(config('services.twilio.verify_sid'));
 
-            return response()->json(['success' => true]);
+        try {
+            $verify->verifications->create($phone, 'whatsapp');
+            return response()->json(['success' => true, 'channel' => 'whatsapp']);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible d\'envoyer le code : ' . $e->getMessage(),
-            ], 422);
+            try {
+                $verify->verifications->create($phone, 'sms');
+                return response()->json(['success' => true, 'channel' => 'sms']);
+            } catch (\Exception $e2) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Impossible d\'envoyer le code : ' . $e2->getMessage(),
+                ], 422);
+            }
         }
     }
 

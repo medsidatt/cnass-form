@@ -152,7 +152,10 @@
                     <div class="field" style="margin-bottom:16px">
                         <label>Numéro WhatsApp</label>
                         <div class="input-row">
-                            <input type="tel" id="phone-input" placeholder="+213 6XX XXX XXX" autocomplete="tel">
+                            <div style="display:flex;align-items:stretch;flex:1">
+                                <span style="background:#f1f5f9;border:1px solid #cbd5e1;border-right:none;border-radius:7px 0 0 7px;padding:10px 13px;font-size:.88rem;color:#475569;white-space:nowrap;display:flex;align-items:center;font-weight:600">+222</span>
+                                <input type="tel" id="phone-input" placeholder="XXXXXXXX" autocomplete="tel" style="border-radius:0 7px 7px 0;border-left:none">
+                            </div>
                             <button type="button" class="btn btn-phone" id="btn-send" onclick="sendOtp()">Envoyer le code</button>
                         </div>
                     </div>
@@ -392,7 +395,10 @@ document.getElementById('situation_familiale').addEventListener('change', toggle
 
 // ── WhatsApp OTP ─────────────────────────────────────────────────────────────
 async function sendOtp() {
-    const phone = document.getElementById('phone-input').value.trim();
+    let digits = document.getElementById('phone-input').value.trim().replace(/\s+/g, '');
+    // Strip any leading + or 222 the user may have typed; the server prepends +222
+    digits = digits.replace(/^\+?2{0,1}2{0,1}2{0,1}/, '').replace(/^0+/, '');
+    const phone = digits;
     if (!phone) return;
     const btn = document.getElementById('btn-send');
     btn.disabled = true; btn.textContent = 'Envoi…';
@@ -400,7 +406,7 @@ async function sendOtp() {
     try {
         const data = await postJson(SEND_URL, { phone });
         if (data.success) {
-            document.getElementById('phone-display').textContent = phone;
+            document.getElementById('phone-display').textContent = '+222' + phone;
             showEl('otp-step'); hideEl('phone-step');
         } else {
             showErr('err-phone', data.message);
