@@ -11,7 +11,7 @@
         .container { max-width: 880px; margin: 36px auto 64px; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.08); overflow: hidden; }
 
         header { background: #1a3a6e; color: #fff; padding: 28px 40px; display: flex; align-items: center; gap: 16px; }
-        header .logo { font-size: 2rem; }
+        header .logo { display: none; }
         header h1  { font-size: 1.2rem; font-weight: 700; }
         header p   { font-size: .78rem; opacity: .7; margin-top: 3px; }
 
@@ -30,8 +30,6 @@
         .otp-wrap { max-width: 440px; margin: 0 auto; }
         .otp-wrap h2  { font-size: 1.1rem; color: #1a3a6e; margin-bottom: 6px; font-weight: 700; }
         .otp-wrap .lead { font-size: .84rem; color: #64748b; line-height: 1.6; margin-bottom: 28px; }
-        .otp-icon { font-size: 2.8rem; margin-bottom: 14px; }
-
         /* Form sections */
         .section { margin-bottom: 32px; }
         .section-title { font-size: .9rem; font-weight: 700; color: #1a3a6e; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
@@ -143,7 +141,6 @@
             </div>
 
             <div class="otp-wrap">
-                <div class="otp-icon">📱</div>
                 <h2>Authentification WhatsApp</h2>
                 <p class="lead">Renseignez votre numéro WhatsApp pour accéder à votre fiche. Un code de vérification vous sera envoyé.</p>
 
@@ -193,17 +190,14 @@
             @if($existing)
             <div class="existing-banner">
                 <div class="info">
-                    <strong>📋 Fiche existante — {{ $existing->nom_complet }}</strong>
-                    <small>Dernière mise à jour : {{ $existing->updated_at->format('d/m/Y à H:i') }} · Vous pouvez modifier vos informations ci-dessous.</small>
+                    <strong>Fiche existante — {{ $existing->nom_complet }}</strong>
+                    <small>Dernière mise à jour : {{ $existing->updated_at->format('d/m/Y à H:i') }}</small>
                 </div>
-                <a href="{{ route('download', $existing->id) }}" class="dl-small">⬇ Télécharger</a>
+                <a href="{{ route('download', $existing->id) }}" class="dl-small">Télécharger</a>
             </div>
             @endif
 
             <div id="alert-form-error" class="alert alert-error hidden"></div>
-            <div id="form-phone-badge" class="{{ $phoneVerified ? '' : 'hidden' }}" style="font-size:.78rem;color:#16a34a;margin-bottom:20px">
-                ✅ Connecté : <strong>{{ $verifiedPhone }}</strong>
-            </div>
 
             <form id="cnass-form" enctype="multipart/form-data">
                 @csrf
@@ -229,16 +223,16 @@
                         <div class="field"></div>
                         <div class="field">
                             <label>Carte d'identité</label>
-                            <input type="file" name="ci_employe" accept=".pdf,.jpg,.jpeg,.png">
+                            <input type="file" name="ci_employe" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->ci_employe))
-                                <div class="file-existing">📎 <a href="{{ Storage::url($existing->ci_employe) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ Storage::url($existing->ci_employe) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
-                            <input type="file" name="photo_employe" accept=".jpg,.jpeg,.png">
+                            <input type="file" name="photo_employe" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->photo_employe))
-                                <div class="file-existing">📎 <a href="{{ Storage::url($existing->photo_employe) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ Storage::url($existing->photo_employe) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                     </div>
@@ -255,16 +249,16 @@
                         </div>
                         <div class="field">
                             <label>Carte d'identité</label>
-                            <input type="file" name="ci_pere" accept=".pdf,.jpg,.jpeg,.png">
+                            <input type="file" name="ci_pere" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->ci_pere))
-                                <div class="file-existing">📎 <a href="{{ Storage::url($existing->ci_pere) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ Storage::url($existing->ci_pere) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
-                            <input type="file" name="photo_pere" accept=".jpg,.jpeg,.png">
+                            <input type="file" name="photo_pere" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->photo_pere))
-                                <div class="file-existing">📎 <a href="{{ Storage::url($existing->photo_pere) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ Storage::url($existing->photo_pere) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                     </div>
@@ -281,16 +275,16 @@
                         </div>
                         <div class="field">
                             <label>Carte d'identité</label>
-                            <input type="file" name="ci_mere" accept=".pdf,.jpg,.jpeg,.png">
+                            <input type="file" name="ci_mere" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->ci_mere))
-                                <div class="file-existing">📎 <a href="{{ Storage::url($existing->ci_mere) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ Storage::url($existing->ci_mere) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
-                            <input type="file" name="photo_mere" accept=".jpg,.jpeg,.png">
+                            <input type="file" name="photo_mere" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->photo_mere))
-                                <div class="file-existing">📎 <a href="{{ Storage::url($existing->photo_mere) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ Storage::url($existing->photo_mere) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                     </div>
@@ -307,16 +301,16 @@
                         </div>
                         <div class="field">
                             <label>Carte d'identité</label>
-                            <input type="file" name="ci_conjoint" accept=".pdf,.jpg,.jpeg,.png">
+                            <input type="file" name="ci_conjoint" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->ci_conjoint))
-                                <div class="file-existing">📎 <a href="{{ Storage::url($existing->ci_conjoint) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ Storage::url($existing->ci_conjoint) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
-                            <input type="file" name="photo_conjoint" accept=".jpg,.jpeg,.png">
+                            <input type="file" name="photo_conjoint" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->photo_conjoint))
-                                <div class="file-existing">📎 <a href="{{ Storage::url($existing->photo_conjoint) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ Storage::url($existing->photo_conjoint) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                     </div>
@@ -339,7 +333,7 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-green full" id="submit-btn">
-                    {{ $existing ? '💾 Mettre à jour ma fiche' : '✔ Soumettre ma fiche' }}
+                    {{ $existing ? 'Mettre à jour ma fiche' : 'Soumettre ma fiche' }}
                 </button>
             </form>
         </div>
@@ -354,12 +348,11 @@
                 <div class="step active"><div class="num">3</div>Confirmation</div>
             </div>
             <div class="success-card">
-                <div class="icon">✅</div>
                 <h2 id="success-title">Fiche enregistrée</h2>
                 <p id="success-name"></p>
                 <div class="success-actions">
-                    <a id="dl-link" href="#" class="btn-dl">⬇ Télécharger ma fiche Excel</a>
-                    <button type="button" class="btn-modify" onclick="showForm()">✏️ Modifier ma fiche</button>
+                    <a id="dl-link" href="#" class="btn-dl">Télécharger ma fiche</a>
+                    <button type="button" class="btn-modify" onclick="showForm()">Modifier ma fiche</button>
                 </div>
             </div>
         </div>
@@ -448,7 +441,7 @@ function addDescendant(prefill) {
     const photoOld = prefill?.photo ?? '';
     div.innerHTML = `
         <div class="card-label">Descendant ${i + 1}</div>
-        <button type="button" class="remove-btn" onclick="removeMember('descendant-${i}','descendants_count','descendants-container')">✕ Supprimer</button>
+        <button type="button" class="remove-btn" onclick="removeMember('descendant-${i}','descendants_count','descendants-container')">Supprimer</button>
         <input type="hidden" name="descendant_ci_old_${i}"    value="${ciOld}">
         <input type="hidden" name="descendant_photo_old_${i}" value="${photoOld}">
         <div class="grid-3">
@@ -458,13 +451,13 @@ function addDescendant(prefill) {
             </div>
             <div class="field">
                 <label>Carte d'identité</label>
-                <input type="file" name="descendant_ci_${i}" accept=".pdf,.jpg,.jpeg,.png">
-                ${ciOld ? '<div class="file-existing">📎 <a href="/storage/'+ciOld+'" target="_blank">Fichier actuel</a></div>' : ''}
+                <input type="file" name="descendant_ci_${i}" accept=".jpg,.jpeg,.pdf">
+                ${ciOld ? '<div class="file-existing"><a href="/storage/'+ciOld+'" target="_blank">Fichier actuel</a></div>' : ''}
             </div>
             <div class="field">
                 <label>Photo</label>
-                <input type="file" name="descendant_photo_${i}" accept=".jpg,.jpeg,.png">
-                ${photoOld ? '<div class="file-existing">📎 <a href="/storage/'+photoOld+'" target="_blank">Fichier actuel</a></div>' : ''}
+                <input type="file" name="descendant_photo_${i}" accept=".jpg,.jpeg,.pdf">
+                ${photoOld ? '<div class="file-existing"><a href="/storage/'+photoOld+'" target="_blank">Fichier actuel</a></div>' : ''}
             </div>
         </div>`;
     document.getElementById('descendants-container').appendChild(div);
@@ -481,7 +474,7 @@ function addFratrie(prefill) {
     const photoOld = prefill?.photo ?? '';
     div.innerHTML = `
         <div class="card-label">Membre ${i + 1}</div>
-        <button type="button" class="remove-btn" onclick="removeMember('fratrie-${i}','fratrie_count','fratrie-container')">✕ Supprimer</button>
+        <button type="button" class="remove-btn" onclick="removeMember('fratrie-${i}','fratrie_count','fratrie-container')">Supprimer</button>
         <input type="hidden" name="fratrie_ci_old_${i}"    value="${ciOld}">
         <input type="hidden" name="fratrie_photo_old_${i}" value="${photoOld}">
         <div class="grid-3">
@@ -498,13 +491,13 @@ function addFratrie(prefill) {
             </div>
             <div class="field">
                 <label>Carte d'identité</label>
-                <input type="file" name="fratrie_ci_${i}" accept=".pdf,.jpg,.jpeg,.png">
-                ${ciOld ? '<div class="file-existing">📎 <a href="/storage/'+ciOld+'" target="_blank">Fichier actuel</a></div>' : ''}
+                <input type="file" name="fratrie_ci_${i}" accept=".jpg,.jpeg,.pdf">
+                ${ciOld ? '<div class="file-existing"><a href="/storage/'+ciOld+'" target="_blank">Fichier actuel</a></div>' : ''}
             </div>
             <div class="field">
                 <label>Photo</label>
-                <input type="file" name="fratrie_photo_${i}" accept=".jpg,.jpeg,.png">
-                ${photoOld ? '<div class="file-existing">📎 <a href="/storage/'+photoOld+'" target="_blank">Fichier actuel</a></div>' : ''}
+                <input type="file" name="fratrie_photo_${i}" accept=".jpg,.jpeg,.pdf">
+                ${photoOld ? '<div class="file-existing"><a href="/storage/'+photoOld+'" target="_blank">Fichier actuel</a></div>' : ''}
             </div>
         </div>`;
     document.getElementById('fratrie-container').appendChild(div);
@@ -545,12 +538,12 @@ document.getElementById('cnass-form').addEventListener('submit', async function 
         } else {
             showErr('alert-form-error', data.message ?? 'Une erreur est survenue.');
             btn.disabled = false;
-            btn.textContent = IS_UPDATE ? '💾 Mettre à jour ma fiche' : '✔ Soumettre ma fiche';
+            btn.textContent = IS_UPDATE ? 'Mettre à jour ma fiche' : 'Soumettre ma fiche';
         }
     } catch {
         showErr('alert-form-error', 'Erreur réseau. Veuillez réessayer.');
         btn.disabled = false;
-        btn.textContent = IS_UPDATE ? '💾 Mettre à jour ma fiche' : '✔ Soumettre ma fiche';
+        btn.textContent = IS_UPDATE ? 'Mettre à jour ma fiche' : 'Soumettre ma fiche';
     }
 });
 

@@ -33,10 +33,22 @@ class SubmissionController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $fileMimes = 'nullable|file|mimes:jpg,jpeg,pdf|max:10240';
+        $rules = [
             'nom_complet'         => 'required|string|max:255',
             'situation_familiale' => 'required|string',
-        ]);
+            'ci_employe'    => $fileMimes, 'photo_employe' => $fileMimes,
+            'ci_pere'       => $fileMimes, 'photo_pere'    => $fileMimes,
+            'ci_mere'       => $fileMimes, 'photo_mere'    => $fileMimes,
+            'ci_conjoint'   => $fileMimes, 'photo_conjoint'=> $fileMimes,
+        ];
+        for ($i = 0; $i < (int) $request->input('fratrie_count', 0); $i++) {
+            $rules["fratrie_ci_$i"] = $fileMimes; $rules["fratrie_photo_$i"] = $fileMimes;
+        }
+        for ($i = 0; $i < (int) $request->input('descendants_count', 0); $i++) {
+            $rules["descendant_ci_$i"] = $fileMimes; $rules["descendant_photo_$i"] = $fileMimes;
+        }
+        $request->validate($rules);
 
         // Determine if this is an update
         $existing = session('submitted_id') ? Submission::find(session('submitted_id')) : null;
@@ -144,6 +156,18 @@ class SubmissionController extends Controller
             abort(403);
         }
 
+        $writer   = new Xlsx($this->buildSpreadsheet(collect([$submission])));
+        $filename = 'fiche_' . Str::slug($submission->nom_complet) . '_' . $submission->created_at->format('Ymd') . '.xlsx';
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function adminDownload(Submission $submission)
+    {
         $writer   = new Xlsx($this->buildSpreadsheet(collect([$submission])));
         $filename = 'fiche_' . Str::slug($submission->nom_complet) . '_' . $submission->created_at->format('Ymd') . '.xlsx';
 

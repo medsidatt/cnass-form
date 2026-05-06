@@ -34,7 +34,7 @@
 <body>
 <div class="topbar">
     <h1>Tableau de bord – Soumissions CNASS</h1>
-    <a href="{{ route('admin.exportExcel') }}">⬇ Exporter Excel</a>
+    <a href="{{ route('admin.exportExcel') }}">Exporter Excel</a>
 </div>
 
 <div class="content">

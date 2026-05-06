@@ -7,10 +7,13 @@
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: Arial, sans-serif; background: #f4f6f9; color: #333; }
-        .topbar { background: #1a3a6e; color: #fff; padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
-        .topbar a { color: #fff; text-decoration: none; font-size: .85rem; opacity: .8; }
-        .topbar a:hover { opacity: 1; }
+        .topbar { background: #1a3a6e; color: #fff; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+        .topbar a.back { color: #fff; text-decoration: none; font-size: .85rem; opacity: .8; }
+        .topbar a.back:hover { opacity: 1; }
         .topbar h1 { font-size: 1.1rem; }
+        .btn-dl-admin { background: #fff; color: #1a3a6e; text-decoration: none; padding: 7px 18px; border-radius: 5px; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+        .btn-dl-admin:hover { background: #f0f4ff; }
         .content { padding: 32px; max-width: 900px; margin: 0 auto; }
         .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.08); margin-bottom: 24px; overflow: hidden; }
         .card-header { background: #1a3a6e; color: #fff; padding: 12px 20px; font-size: .95rem; font-weight: bold; }
@@ -18,7 +21,12 @@
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .field label { font-size: .75rem; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
         .field p { font-size: .9rem; margin-top: 2px; }
-        .file-link { color: #1a3a6e; font-size: .85rem; }
+        .file-actions { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+        .file-actions a { font-size: .82rem; padding: 4px 12px; border-radius: 4px; text-decoration: none; font-weight: 600; }
+        .btn-view { background: #f0f4ff; color: #1a3a6e; border: 1px solid #bfdbfe; }
+        .btn-view:hover { background: #dbeafe; }
+        .btn-download { background: #1a3a6e; color: #fff; }
+        .btn-download:hover { background: #14316a; }
         .sub-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px; margin-bottom: 10px; }
         .sub-card strong { font-size: .85rem; color: #1a3a6e; }
         .sub-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
@@ -28,8 +36,11 @@
 </head>
 <body>
 <div class="topbar">
-    <a href="{{ route('admin.index') }}">← Retour</a>
-    <h1>Soumission #{{ $submission->id }} – {{ $submission->nom_complet }}</h1>
+    <div class="topbar-left">
+        <a href="{{ route('admin.index') }}" class="back">← Retour</a>
+        <h1>{{ $submission->nom_complet }} — #{{ $submission->id }}</h1>
+    </div>
+    <a href="{{ route('admin.download', $submission) }}" class="btn-dl-admin">Télécharger la fiche Excel</a>
 </div>
 
 <div class="content">
@@ -44,13 +55,19 @@
                 <div class="field">
                     <label>Carte d'identité</label>
                     @if($submission->ci_employe)
-                        <a class="file-link" href="{{ Storage::url($submission->ci_employe) }}" target="_blank">Voir le fichier</a>
+                        <div class="file-actions">
+                            <a href="{{ Storage::url($submission->ci_employe) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ Storage::url($submission->ci_employe) }}" download class="btn-download">Télécharger</a>
+                        </div>
                     @else <span class="empty">—</span> @endif
                 </div>
                 <div class="field">
                     <label>Photo</label>
                     @if($submission->photo_employe)
-                        <a class="file-link" href="{{ Storage::url($submission->photo_employe) }}" target="_blank">Voir le fichier</a>
+                        <div class="file-actions">
+                            <a href="{{ Storage::url($submission->photo_employe) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ Storage::url($submission->photo_employe) }}" download class="btn-download">Télécharger</a>
+                        </div>
                     @else <span class="empty">—</span> @endif
                 </div>
             </div>
@@ -67,13 +84,19 @@
                 <div class="field">
                     <label>Carte d'identité</label>
                     @if($submission->ci_pere)
-                        <a class="file-link" href="{{ Storage::url($submission->ci_pere) }}" target="_blank">Voir le fichier</a>
+                        <div class="file-actions">
+                            <a href="{{ Storage::url($submission->ci_pere) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ Storage::url($submission->ci_pere) }}" download class="btn-download">Télécharger</a>
+                        </div>
                     @else <span class="empty">—</span> @endif
                 </div>
                 <div class="field">
                     <label>Photo</label>
                     @if($submission->photo_pere)
-                        <a class="file-link" href="{{ Storage::url($submission->photo_pere) }}" target="_blank">Voir le fichier</a>
+                        <div class="file-actions">
+                            <a href="{{ Storage::url($submission->photo_pere) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ Storage::url($submission->photo_pere) }}" download class="btn-download">Télécharger</a>
+                        </div>
                     @else <span class="empty">—</span> @endif
                 </div>
             </div>
@@ -90,13 +113,19 @@
                 <div class="field">
                     <label>Carte d'identité</label>
                     @if($submission->ci_mere)
-                        <a class="file-link" href="{{ Storage::url($submission->ci_mere) }}" target="_blank">Voir le fichier</a>
+                        <div class="file-actions">
+                            <a href="{{ Storage::url($submission->ci_mere) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ Storage::url($submission->ci_mere) }}" download class="btn-download">Télécharger</a>
+                        </div>
                     @else <span class="empty">—</span> @endif
                 </div>
                 <div class="field">
                     <label>Photo</label>
                     @if($submission->photo_mere)
-                        <a class="file-link" href="{{ Storage::url($submission->photo_mere) }}" target="_blank">Voir le fichier</a>
+                        <div class="file-actions">
+                            <a href="{{ Storage::url($submission->photo_mere) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ Storage::url($submission->photo_mere) }}" download class="btn-download">Télécharger</a>
+                        </div>
                     @else <span class="empty">—</span> @endif
                 </div>
             </div>
@@ -115,13 +144,19 @@
                         <div class="field">
                             <label>Carte d'identité</label>
                             @if(!empty($m['ci']))
-                                <a class="file-link" href="{{ Storage::url($m['ci']) }}" target="_blank">Voir le fichier</a>
+                                <div class="file-actions">
+                                    <a href="{{ Storage::url($m['ci']) }}" target="_blank" class="btn-view">Voir</a>
+                                    <a href="{{ Storage::url($m['ci']) }}" download class="btn-download">Télécharger</a>
+                                </div>
                             @else <span class="empty">—</span> @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
                             @if(!empty($m['photo']))
-                                <a class="file-link" href="{{ Storage::url($m['photo']) }}" target="_blank">Voir le fichier</a>
+                                <div class="file-actions">
+                                    <a href="{{ Storage::url($m['photo']) }}" target="_blank" class="btn-view">Voir</a>
+                                    <a href="{{ Storage::url($m['photo']) }}" download class="btn-download">Télécharger</a>
+                                </div>
                             @else <span class="empty">—</span> @endif
                         </div>
                     </div>
@@ -143,13 +178,19 @@
                 <div class="field">
                     <label>Carte d'identité</label>
                     @if($submission->ci_conjoint)
-                        <a class="file-link" href="{{ Storage::url($submission->ci_conjoint) }}" target="_blank">Voir le fichier</a>
+                        <div class="file-actions">
+                            <a href="{{ Storage::url($submission->ci_conjoint) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ Storage::url($submission->ci_conjoint) }}" download class="btn-download">Télécharger</a>
+                        </div>
                     @else <span class="empty">—</span> @endif
                 </div>
                 <div class="field">
                     <label>Photo</label>
                     @if($submission->photo_conjoint)
-                        <a class="file-link" href="{{ Storage::url($submission->photo_conjoint) }}" target="_blank">Voir le fichier</a>
+                        <div class="file-actions">
+                            <a href="{{ Storage::url($submission->photo_conjoint) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ Storage::url($submission->photo_conjoint) }}" download class="btn-download">Télécharger</a>
+                        </div>
                     @else <span class="empty">—</span> @endif
                 </div>
             </div>
@@ -167,14 +208,20 @@
                     <div class="sub-row">
                         <div class="field">
                             <label>Carte d'identité</label>
-                            @if($d['ci'])
-                                <a class="file-link" href="{{ Storage::url($d['ci']) }}" target="_blank">Voir le fichier</a>
+                            @if(!empty($d['ci']))
+                                <div class="file-actions">
+                                    <a href="{{ Storage::url($d['ci']) }}" target="_blank" class="btn-view">Voir</a>
+                                    <a href="{{ Storage::url($d['ci']) }}" download class="btn-download">Télécharger</a>
+                                </div>
                             @else <span class="empty">—</span> @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
-                            @if($d['photo'])
-                                <a class="file-link" href="{{ Storage::url($d['photo']) }}" target="_blank">Voir le fichier</a>
+                            @if(!empty($d['photo']))
+                                <div class="file-actions">
+                                    <a href="{{ Storage::url($d['photo']) }}" target="_blank" class="btn-view">Voir</a>
+                                    <a href="{{ Storage::url($d['photo']) }}" download class="btn-download">Télécharger</a>
+                                </div>
                             @else <span class="empty">—</span> @endif
                         </div>
                     </div>

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php --version)",
+      "Bash(composer --version)",
+      "Read(//c/Users/mdalo/Documents/workspace/amc/**)",
+      "Bash(composer create-project *)",
+      "Bash(mv cnass-form-tmp/* cnass-form/)",
+      "Bash(mv cnass-form-tmp/.* cnass-form/)",
+      "Bash(rmdir cnass-form-tmp *)"
+    ]
+  }
+}

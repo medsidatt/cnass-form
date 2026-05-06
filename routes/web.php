@@ -18,7 +18,8 @@ Route::get('/session/reset',         [SubmissionController::class, 'resetSession
 
 // Admin (protect with auth middleware in production)
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('/',             [SubmissionController::class, 'index'])->name('index');
-    Route::get('/export/excel', [SubmissionController::class, 'exportExcel'])->name('exportExcel');
-    Route::get('/{submission}', [SubmissionController::class, 'show'])->name('show');
+    Route::get('/',                         [SubmissionController::class, 'index'])->name('index');
+    Route::get('/export/excel',             [SubmissionController::class, 'exportExcel'])->name('exportExcel');
+    Route::get('/{submission}/download',    [SubmissionController::class, 'adminDownload'])->name('download');
+    Route::get('/{submission}',             [SubmissionController::class, 'show'])->name('show');
 });
