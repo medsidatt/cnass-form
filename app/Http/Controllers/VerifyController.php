@@ -20,37 +20,39 @@ class VerifyController extends Controller
         return empty(config('services.twilio.sid')) || empty(config('services.twilio.verify_sid'));
     }
 
-    // Step 1 – send OTP via WhatsApp
+    // Step 1 – send OTP via chosen channel (whatsapp or sms)
     public function send(Request $request)
     {
-        $request->validate(['phone' => 'required|string|min:8']);
+        $request->validate([
+            'phone'   => 'required|string|min:8',
+            'channel' => 'in:whatsapp,sms',
+        ]);
 
         $phone = preg_replace('/\s+/', '', $request->phone);
         if (!str_starts_with($phone, '+')) {
             $phone = '+222' . ltrim($phone, '0');
         }
 
+        $channel = $request->input('channel', 'sms');
         session(['otp_phone' => $phone]);
 
         if ($this->isDevMode()) {
-            return response()->json(['success' => true, 'dev' => true]);
+            return response()->json(['success' => true, 'dev' => true, 'channel' => $channel]);
         }
 
-        $verify = $this->twilio()->verify->v2->services(config('services.twilio.verify_sid'));
-
         try {
-            $verify->verifications->create($phone, 'whatsapp');
-            return response()->json(['success' => true, 'channel' => 'whatsapp']);
+            $this->twilio()
+                ->verify->v2
+                ->services(config('services.twilio.verify_sid'))
+                ->verifications
+                ->create($phone, $channel);
+
+            return response()->json(['success' => true, 'channel' => $channel]);
         } catch (\Exception $e) {
-            try {
-                $verify->verifications->create($phone, 'sms');
-                return response()->json(['success' => true, 'channel' => 'sms']);
-            } catch (\Exception $e2) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Impossible d\'envoyer le code : ' . $e2->getMessage(),
-                ], 422);
-            }
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible d\'envoyer le code : ' . $e->getMessage(),
+            ], 422);
         }
     }
 

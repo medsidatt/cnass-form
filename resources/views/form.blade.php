@@ -142,18 +142,34 @@
 
             <div class="otp-wrap">
                 <h2>Authentification WhatsApp</h2>
-                <p class="lead">Renseignez votre numéro WhatsApp pour accéder à votre fiche. Un code de vérification vous sera envoyé.</p>
+                <p class="lead">Renseignez votre numéro de téléphone pour accéder à votre fiche. Un code de vérification vous sera envoyé.</p>
 
                 <div id="phone-step">
                     <div id="err-phone" class="alert alert-error hidden"></div>
+
+                    {{-- Channel selector --}}
                     <div class="field" style="margin-bottom:16px">
-                        <label>Numéro WhatsApp</label>
+                        <label>Méthode de réception du code</label>
+                        <div style="display:flex;gap:0;margin-top:4px">
+                            <button type="button" id="ch-whatsapp" onclick="selectChannel('whatsapp')"
+                                style="flex:1;padding:9px;border:1px solid #cbd5e1;border-right:none;border-radius:7px 0 0 7px;background:#25d366;color:#fff;font-size:.84rem;font-weight:700;cursor:pointer">
+                                WhatsApp
+                            </button>
+                            <button type="button" id="ch-sms" onclick="selectChannel('sms')"
+                                style="flex:1;padding:9px;border:1px solid #cbd5e1;border-radius:0 7px 7px 0;background:#f1f5f9;color:#475569;font-size:.84rem;font-weight:600;cursor:pointer">
+                                SMS
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="field" style="margin-bottom:16px">
+                        <label>Numéro de téléphone</label>
                         <div class="input-row">
                             <div style="display:flex;align-items:stretch;flex:1">
                                 <span style="background:#f1f5f9;border:1px solid #cbd5e1;border-right:none;border-radius:7px 0 0 7px;padding:10px 13px;font-size:.88rem;color:#475569;white-space:nowrap;display:flex;align-items:center;font-weight:600">+222</span>
                                 <input type="tel" id="phone-input" placeholder="XXXXXXXX" autocomplete="tel" style="border-radius:0 7px 7px 0;border-left:none">
                             </div>
-                            <button type="button" class="btn btn-phone" id="btn-send" onclick="sendOtp()">Envoyer le code</button>
+                            <button type="button" class="btn btn-primary" id="btn-send" onclick="sendOtp()">Envoyer le code</button>
                         </div>
                     </div>
                 </div>
@@ -161,7 +177,7 @@
                 <div id="otp-step" class="hidden">
                     <div id="err-otp" class="alert alert-error hidden"></div>
                     <p style="font-size:.84rem;color:#64748b;margin-bottom:16px">
-                        Code envoyé sur <strong id="phone-display"></strong>. Consultez votre WhatsApp.
+                        Code envoyé sur <strong id="phone-display"></strong> via <strong id="channel-display"></strong>.
                     </p>
                     <div class="field" style="margin-bottom:16px">
                         <label>Code de vérification (6 chiffres)</label>
@@ -193,7 +209,6 @@
                     <strong>Fiche existante — {{ $existing->nom_complet }}</strong>
                     <small>Dernière mise à jour : {{ $existing->updated_at->format('d/m/Y à H:i') }}</small>
                 </div>
-                <a href="{{ route('download', $existing->id) }}" class="dl-small">Télécharger</a>
             </div>
             @endif
 
@@ -349,9 +364,8 @@
             </div>
             <div class="success-card">
                 <h2 id="success-title">Fiche enregistrée</h2>
-                <p id="success-name"></p>
+                <p id="success-name" style="margin-bottom:24px"></p>
                 <div class="success-actions">
-                    <a id="dl-link" href="#" class="btn-dl">Télécharger ma fiche</a>
                     <button type="button" class="btn-modify" onclick="showForm()">Modifier ma fiche</button>
                 </div>
             </div>
@@ -386,10 +400,24 @@ function toggleConjoint() {
 }
 document.getElementById('situation_familiale').addEventListener('change', toggleConjoint);
 
-// ── WhatsApp OTP ─────────────────────────────────────────────────────────────
+// ── Channel selector ─────────────────────────────────────────────────────────
+let selectedChannel = 'whatsapp';
+function selectChannel(ch) {
+    selectedChannel = ch;
+    const wa  = document.getElementById('ch-whatsapp');
+    const sms = document.getElementById('ch-sms');
+    if (ch === 'whatsapp') {
+        wa.style.background  = '#25d366'; wa.style.color  = '#fff';
+        sms.style.background = '#f1f5f9'; sms.style.color = '#475569';
+    } else {
+        sms.style.background = '#1a3a6e'; sms.style.color = '#fff';
+        wa.style.background  = '#f1f5f9'; wa.style.color  = '#475569';
+    }
+}
+
+// ── OTP send ─────────────────────────────────────────────────────────────────
 async function sendOtp() {
     let digits = document.getElementById('phone-input').value.trim().replace(/\s+/g, '');
-    // Strip any leading + or 222 the user may have typed; the server prepends +222
     digits = digits.replace(/^\+?2{0,1}2{0,1}2{0,1}/, '').replace(/^0+/, '');
     const phone = digits;
     if (!phone) return;
@@ -397,9 +425,10 @@ async function sendOtp() {
     btn.disabled = true; btn.textContent = 'Envoi…';
     hideEl('err-phone');
     try {
-        const data = await postJson(SEND_URL, { phone });
+        const data = await postJson(SEND_URL, { phone, channel: selectedChannel });
         if (data.success) {
-            document.getElementById('phone-display').textContent = '+222' + phone;
+            document.getElementById('phone-display').textContent   = '+222' + phone;
+            document.getElementById('channel-display').textContent = selectedChannel === 'whatsapp' ? 'WhatsApp' : 'SMS';
             showEl('otp-step'); hideEl('phone-step');
         } else {
             showErr('err-phone', data.message);
