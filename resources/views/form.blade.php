@@ -160,8 +160,11 @@
 
                 <div id="otp-step" class="hidden">
                     <div id="err-otp" class="alert alert-error hidden"></div>
-                    <p style="font-size:.84rem;color:#64748b;margin-bottom:16px">
+                    <p style="font-size:.84rem;color:#64748b;margin-bottom:8px">
                         Code envoyé sur WhatsApp au <strong id="phone-display"></strong>. Consultez votre WhatsApp.
+                    </p>
+                    <p id="otp-expiry" style="font-size:.78rem;color:#94a3b8;margin-bottom:16px">
+                        Code valide pendant <strong id="otp-expiry-time">15:00</strong>.
                     </p>
                     <div class="field" style="margin-bottom:16px">
                         <label>Code de vérification (6 chiffres)</label>
@@ -170,7 +173,12 @@
                             <button type="button" class="btn btn-primary" id="btn-verify" onclick="verifyOtp()">Vérifier</button>
                         </div>
                     </div>
-                    <button type="button" class="btn-link" onclick="resetPhone()">← Changer de numéro</button>
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+                        <button type="button" class="btn-link" onclick="resetPhone()">← Changer de numéro</button>
+                        <button type="button" class="btn-link" id="btn-resend" onclick="resendOtp()" disabled>
+                            Renvoyer dans <span id="resend-countdown">30</span>s
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -396,6 +404,12 @@ function toggleConjoint() {
 document.getElementById('situation_familiale').addEventListener('change', toggleConjoint);
 
 // ── WhatsApp OTP ─────────────────────────────────────────────────────────────
+const OTP_TTL_SECONDS    = 15 * 60;   // matches VerifyController::OTP_TTL_MINUTES
+const RESEND_COOLDOWN_S  = 30;        // must be ≥ 60/perMinute send limit (3/min ⇒ 20s)
+
+let _expiryTimer = null;
+let _resendTimer = null;
+
 async function sendOtp() {
     let digits = document.getElementById('phone-input').value.trim().replace(/\s+/g, '');
     digits = digits.replace(/^\+?2{0,1}2{0,1}2{0,1}/, '').replace(/^0+/, '');
@@ -409,11 +423,33 @@ async function sendOtp() {
         if (data.success) {
             document.getElementById('phone-display').textContent = '+222' + phone;
             showEl('otp-step'); hideEl('phone-step');
+            startOtpTimers();
         } else {
             showErr('err-phone', data.message);
         }
     } catch (e) { showErr('err-phone', e.message || 'Erreur réseau. Veuillez réessayer.'); }
     finally { btn.disabled = false; btn.textContent = 'Envoyer le code'; }
+}
+
+async function resendOtp() {
+    const btn = document.getElementById('btn-resend');
+    if (btn.disabled) return;
+    const phone = (document.getElementById('phone-display').textContent || '').replace(/^\+222/, '');
+    if (!phone) return;
+    btn.disabled = true; btn.textContent = 'Envoi…';
+    hideEl('err-otp');
+    try {
+        const data = await postJson(SEND_URL, { phone });
+        if (data.success) {
+            startOtpTimers();
+        } else {
+            showErr('err-otp', data.message);
+            startResendCountdown(); // re-arm cooldown so user can retry shortly
+        }
+    } catch (e) {
+        showErr('err-otp', e.message || 'Erreur réseau. Veuillez réessayer.');
+        startResendCountdown();
+    }
 }
 
 async function verifyOtp() {
@@ -425,6 +461,7 @@ async function verifyOtp() {
     try {
         const data = await postJson(CHECK_URL, { code });
         if (data.success) {
+            stopOtpTimers();
             window.location.href = '/';
         } else {
             showErr('err-otp', data.message);
@@ -434,8 +471,69 @@ async function verifyOtp() {
 }
 
 function resetPhone() {
+    stopOtpTimers();
     document.getElementById('otp-input').value = '';
     hideEl('err-otp'); showEl('phone-step'); hideEl('otp-step');
+}
+
+// ── OTP countdowns ───────────────────────────────────────────────────────────
+function startOtpTimers() {
+    startExpiryCountdown();
+    startResendCountdown();
+}
+function stopOtpTimers() {
+    if (_expiryTimer) { clearInterval(_expiryTimer); _expiryTimer = null; }
+    if (_resendTimer) { clearInterval(_resendTimer); _resendTimer = null; }
+}
+function fmtMMSS(total) {
+    const m = Math.floor(total / 60), s = total % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+function startExpiryCountdown() {
+    if (_expiryTimer) clearInterval(_expiryTimer);
+    let remaining = OTP_TTL_SECONDS;
+    const el     = document.getElementById('otp-expiry-time');
+    const wrap   = document.getElementById('otp-expiry');
+    const verify = document.getElementById('btn-verify');
+    el.textContent = fmtMMSS(remaining);
+    wrap.style.color = '#94a3b8';
+    _expiryTimer = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+            clearInterval(_expiryTimer); _expiryTimer = null;
+            el.textContent = '00:00';
+            wrap.style.color = '#dc2626';
+            wrap.innerHTML = 'Code expiré. <a href="#" onclick="resendOtp();return false" style="color:#1a3a6e;font-weight:600">Renvoyer un nouveau code</a>.';
+            verify.disabled = true;
+            // Allow immediate resend once expired.
+            const btn = document.getElementById('btn-resend');
+            btn.disabled = false; btn.textContent = 'Renvoyer le code';
+            if (_resendTimer) { clearInterval(_resendTimer); _resendTimer = null; }
+            return;
+        }
+        el.textContent = fmtMMSS(remaining);
+        if (remaining <= 60) wrap.style.color = '#dc2626';
+        else if (remaining <= 180) wrap.style.color = '#d97706';
+    }, 1000);
+}
+function startResendCountdown() {
+    if (_resendTimer) clearInterval(_resendTimer);
+    let remaining = RESEND_COOLDOWN_S;
+    const btn = document.getElementById('btn-resend');
+    const num = document.getElementById('resend-countdown');
+    btn.disabled = true;
+    btn.innerHTML = 'Renvoyer dans <span id="resend-countdown">' + remaining + '</span>s';
+    _resendTimer = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+            clearInterval(_resendTimer); _resendTimer = null;
+            btn.disabled = false;
+            btn.textContent = 'Renvoyer le code';
+            return;
+        }
+        const live = document.getElementById('resend-countdown');
+        if (live) live.textContent = remaining;
+    }, 1000);
 }
 
 // ── Dynamic members ───────────────────────────────────────────────────────────
