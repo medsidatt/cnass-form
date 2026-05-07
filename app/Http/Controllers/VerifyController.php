@@ -36,11 +36,22 @@ class VerifyController extends Controller
         }
 
         try {
-            $this->twilio()
+            $verification = $this->twilio()
                 ->verify->v2
                 ->services(config('services.twilio.verify_sid'))
                 ->verifications
                 ->create($phone, 'whatsapp');
+
+            // Check that the code was actually sent via WhatsApp, not SMS fallback
+            $attempts = $verification->sendCodeAttempts ?? [];
+            $lastChannel = !empty($attempts) ? ($attempts[count($attempts) - 1]['channel'] ?? null) : null;
+
+            if ($lastChannel && $lastChannel !== 'whatsapp') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'WhatsApp non disponible pour ce numéro. Vérification impossible.',
+                ], 422);
+            }
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
