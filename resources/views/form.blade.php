@@ -176,7 +176,7 @@
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
                         <button type="button" class="btn-link" onclick="resetPhone()">← Changer de numéro</button>
                         <button type="button" class="btn-link" id="btn-resend" onclick="resendOtp()" disabled>
-                            Renvoyer dans <span id="resend-countdown">30</span>s
+                            Renvoyer dans <span id="resend-countdown">60</span>s
                         </button>
                     </div>
                 </div>
@@ -405,7 +405,7 @@ document.getElementById('situation_familiale').addEventListener('change', toggle
 
 // ── WhatsApp OTP ─────────────────────────────────────────────────────────────
 const OTP_TTL_SECONDS    = 15 * 60;   // matches VerifyController::OTP_TTL_MINUTES
-const RESEND_COOLDOWN_S  = 30;        // must be ≥ 60/perMinute send limit (3/min ⇒ 20s)
+const RESEND_COOLDOWN_S  = 60;        // 1 minute between resends — well inside the 3/min server limit
 
 let _expiryTimer = null;
 let _resendTimer = null;
