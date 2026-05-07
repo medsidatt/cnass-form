@@ -56,8 +56,8 @@
                     <label>Carte d'identité</label>
                     @if($submission->ci_employe)
                         <div class="file-actions">
-                            <a href="{{ Storage::url($submission->ci_employe) }}" target="_blank" class="btn-view">Voir</a>
-                            <a href="{{ Storage::url($submission->ci_employe) }}" download class="btn-download">Télécharger</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'ci_employe']) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'ci_employe', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                         </div>
                     @else <span class="empty">—</span> @endif
                 </div>
@@ -65,8 +65,8 @@
                     <label>Photo</label>
                     @if($submission->photo_employe)
                         <div class="file-actions">
-                            <a href="{{ Storage::url($submission->photo_employe) }}" target="_blank" class="btn-view">Voir</a>
-                            <a href="{{ Storage::url($submission->photo_employe) }}" download class="btn-download">Télécharger</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'photo_employe']) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'photo_employe', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                         </div>
                     @else <span class="empty">—</span> @endif
                 </div>
@@ -85,8 +85,8 @@
                     <label>Carte d'identité</label>
                     @if($submission->ci_pere)
                         <div class="file-actions">
-                            <a href="{{ Storage::url($submission->ci_pere) }}" target="_blank" class="btn-view">Voir</a>
-                            <a href="{{ Storage::url($submission->ci_pere) }}" download class="btn-download">Télécharger</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'ci_pere']) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'ci_pere', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                         </div>
                     @else <span class="empty">—</span> @endif
                 </div>
@@ -94,8 +94,8 @@
                     <label>Photo</label>
                     @if($submission->photo_pere)
                         <div class="file-actions">
-                            <a href="{{ Storage::url($submission->photo_pere) }}" target="_blank" class="btn-view">Voir</a>
-                            <a href="{{ Storage::url($submission->photo_pere) }}" download class="btn-download">Télécharger</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'photo_pere']) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'photo_pere', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                         </div>
                     @else <span class="empty">—</span> @endif
                 </div>
@@ -114,8 +114,8 @@
                     <label>Carte d'identité</label>
                     @if($submission->ci_mere)
                         <div class="file-actions">
-                            <a href="{{ Storage::url($submission->ci_mere) }}" target="_blank" class="btn-view">Voir</a>
-                            <a href="{{ Storage::url($submission->ci_mere) }}" download class="btn-download">Télécharger</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'ci_mere']) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'ci_mere', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                         </div>
                     @else <span class="empty">—</span> @endif
                 </div>
@@ -123,8 +123,8 @@
                     <label>Photo</label>
                     @if($submission->photo_mere)
                         <div class="file-actions">
-                            <a href="{{ Storage::url($submission->photo_mere) }}" target="_blank" class="btn-view">Voir</a>
-                            <a href="{{ Storage::url($submission->photo_mere) }}" download class="btn-download">Télécharger</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'photo_mere']) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'photo_mere', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                         </div>
                     @else <span class="empty">—</span> @endif
                 </div>
@@ -133,7 +133,11 @@
     </div>
 
     {{-- FRATRIE (Frères + Sœurs) --}}
-    @php $fratrie = collect($submission->freres ?? [])->map(fn($f) => array_merge($f, ['_type'=>'Frère']))->concat(collect($submission->soeurs ?? [])->map(fn($s) => array_merge($s, ['_type'=>'Sœur'])))->values(); @endphp
+    @php
+        $freres = collect($submission->freres ?? [])->map(fn($f, $i) => array_merge($f, ['_type'=>'Frère', '_key'=>'freres', '_idx'=>$i]));
+        $soeurs = collect($submission->soeurs ?? [])->map(fn($s, $i) => array_merge($s, ['_type'=>'Sœur',  '_key'=>'soeurs', '_idx'=>$i]));
+        $fratrie = $freres->concat($soeurs)->values();
+    @endphp
     <div class="card">
         <div class="card-header">Fratrie ({{ $fratrie->count() }} membre(s))</div>
         <div class="card-body">
@@ -145,8 +149,8 @@
                             <label>Carte d'identité</label>
                             @if(!empty($m['ci']))
                                 <div class="file-actions">
-                                    <a href="{{ Storage::url($m['ci']) }}" target="_blank" class="btn-view">Voir</a>
-                                    <a href="{{ Storage::url($m['ci']) }}" download class="btn-download">Télécharger</a>
+                                    <a href="{{ route('files.show', ['submission' => $submission, 'key' => $m['_key'].'.'.$m['_idx'].'.ci']) }}" target="_blank" class="btn-view">Voir</a>
+                                    <a href="{{ route('files.show', ['submission' => $submission, 'key' => $m['_key'].'.'.$m['_idx'].'.ci', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                                 </div>
                             @else <span class="empty">—</span> @endif
                         </div>
@@ -154,8 +158,8 @@
                             <label>Photo</label>
                             @if(!empty($m['photo']))
                                 <div class="file-actions">
-                                    <a href="{{ Storage::url($m['photo']) }}" target="_blank" class="btn-view">Voir</a>
-                                    <a href="{{ Storage::url($m['photo']) }}" download class="btn-download">Télécharger</a>
+                                    <a href="{{ route('files.show', ['submission' => $submission, 'key' => $m['_key'].'.'.$m['_idx'].'.photo']) }}" target="_blank" class="btn-view">Voir</a>
+                                    <a href="{{ route('files.show', ['submission' => $submission, 'key' => $m['_key'].'.'.$m['_idx'].'.photo', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                                 </div>
                             @else <span class="empty">—</span> @endif
                         </div>
@@ -179,8 +183,8 @@
                     <label>Carte d'identité</label>
                     @if($submission->ci_conjoint)
                         <div class="file-actions">
-                            <a href="{{ Storage::url($submission->ci_conjoint) }}" target="_blank" class="btn-view">Voir</a>
-                            <a href="{{ Storage::url($submission->ci_conjoint) }}" download class="btn-download">Télécharger</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'ci_conjoint']) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'ci_conjoint', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                         </div>
                     @else <span class="empty">—</span> @endif
                 </div>
@@ -188,8 +192,8 @@
                     <label>Photo</label>
                     @if($submission->photo_conjoint)
                         <div class="file-actions">
-                            <a href="{{ Storage::url($submission->photo_conjoint) }}" target="_blank" class="btn-view">Voir</a>
-                            <a href="{{ Storage::url($submission->photo_conjoint) }}" download class="btn-download">Télécharger</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'photo_conjoint']) }}" target="_blank" class="btn-view">Voir</a>
+                            <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'photo_conjoint', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                         </div>
                     @else <span class="empty">—</span> @endif
                 </div>
@@ -210,8 +214,8 @@
                             <label>Carte d'identité</label>
                             @if(!empty($d['ci']))
                                 <div class="file-actions">
-                                    <a href="{{ Storage::url($d['ci']) }}" target="_blank" class="btn-view">Voir</a>
-                                    <a href="{{ Storage::url($d['ci']) }}" download class="btn-download">Télécharger</a>
+                                    <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'descendants.'.$i.'.ci']) }}" target="_blank" class="btn-view">Voir</a>
+                                    <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'descendants.'.$i.'.ci', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                                 </div>
                             @else <span class="empty">—</span> @endif
                         </div>
@@ -219,8 +223,8 @@
                             <label>Photo</label>
                             @if(!empty($d['photo']))
                                 <div class="file-actions">
-                                    <a href="{{ Storage::url($d['photo']) }}" target="_blank" class="btn-view">Voir</a>
-                                    <a href="{{ Storage::url($d['photo']) }}" download class="btn-download">Télécharger</a>
+                                    <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'descendants.'.$i.'.photo']) }}" target="_blank" class="btn-view">Voir</a>
+                                    <a href="{{ route('files.show', ['submission' => $submission, 'key' => 'descendants.'.$i.'.photo', 'download' => 1]) }}" class="btn-download">Télécharger</a>
                                 </div>
                             @else <span class="empty">—</span> @endif
                         </div>

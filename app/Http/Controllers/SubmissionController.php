@@ -4,27 +4,44 @@ namespace App\Http\Controllers;
 
 use App\Models\Submission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\Hyperlink;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Font;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class SubmissionController extends Controller
 {
-    public function form()
+    /**
+     * Upload disk. Files are served only through serveFile() which enforces
+     * auth, so the production deployment must NOT run `php artisan storage:link`
+     * (which would expose them at /storage/...).
+     */
+    private const DISK = 'public';
+
+    /** Upper bounds for dynamic family-member arrays. */
+    private const MAX_FRATRIE     = 30;
+    private const MAX_DESCENDANTS = 30;
+
+    /** Max file size in kilobytes (10 MB). */
+    private const MAX_FILE_KB = 10240;
+
+    public function form(Request $request)
     {
-        $phoneVerified = session('phone_verified', false);
-        $verifiedPhone = session('verified_phone');
+        $phoneVerified = (bool) $request->session()->get('phone_verified', false);
+        $verifiedPhone = $request->session()->get('verified_phone');
         $existing      = null;
 
         if ($phoneVerified && $verifiedPhone) {
             $existing = Submission::where('phone', $verifiedPhone)->latest()->first();
             if ($existing) {
-                session(['submitted_id' => $existing->id]);
+                $request->session()->put('submitted_id', $existing->id);
             }
         }
 
@@ -33,42 +50,68 @@ class SubmissionController extends Controller
 
     public function store(Request $request)
     {
-        $fileMimes = 'nullable|file|mimes:jpg,jpeg,pdf|max:10240';
+        if (!$request->session()->get('phone_verified')) {
+            return response()->json(['success' => false, 'message' => 'Vérification requise.'], 403);
+        }
+
+        $fileRule = ['nullable', 'file', 'mimes:jpg,jpeg,pdf', 'mimetypes:image/jpeg,application/pdf', 'max:' . self::MAX_FILE_KB];
+
         $rules = [
-            'nom_complet'         => 'required|string|max:255',
-            'situation_familiale' => 'required|string',
-            'ci_employe'    => $fileMimes, 'photo_employe' => $fileMimes,
-            'ci_pere'       => $fileMimes, 'photo_pere'    => $fileMimes,
-            'ci_mere'       => $fileMimes, 'photo_mere'    => $fileMimes,
-            'ci_conjoint'   => $fileMimes, 'photo_conjoint'=> $fileMimes,
+            'nom_complet'         => ['required', 'string', 'max:255'],
+            'situation_familiale' => ['required', 'string', 'in:célibataire,marié(e),divorcé(e),veuf/veuve'],
+            'nom_pere'            => ['nullable', 'string', 'max:255'],
+            'nom_mere'            => ['nullable', 'string', 'max:255'],
+            'nom_conjoint'        => ['nullable', 'string', 'max:255'],
+            'fratrie_count'       => ['nullable', 'integer', 'min:0', 'max:' . self::MAX_FRATRIE],
+            'descendants_count'   => ['nullable', 'integer', 'min:0', 'max:' . self::MAX_DESCENDANTS],
+            'ci_employe'    => $fileRule, 'photo_employe' => $fileRule,
+            'ci_pere'       => $fileRule, 'photo_pere'    => $fileRule,
+            'ci_mere'       => $fileRule, 'photo_mere'    => $fileRule,
+            'ci_conjoint'   => $fileRule, 'photo_conjoint'=> $fileRule,
         ];
-        for ($i = 0; $i < (int) $request->input('fratrie_count', 0); $i++) {
-            $rules["fratrie_ci_$i"] = $fileMimes; $rules["fratrie_photo_$i"] = $fileMimes;
+
+        $fratrieCount     = min((int) $request->input('fratrie_count', 0), self::MAX_FRATRIE);
+        $descendantsCount = min((int) $request->input('descendants_count', 0), self::MAX_DESCENDANTS);
+
+        for ($i = 0; $i < $fratrieCount; $i++) {
+            $rules["fratrie_nom_$i"]   = ['nullable', 'string', 'max:255'];
+            $rules["fratrie_type_$i"]  = ['nullable', 'string', 'in:frere,soeur'];
+            $rules["fratrie_ci_$i"]    = $fileRule;
+            $rules["fratrie_photo_$i"] = $fileRule;
         }
-        for ($i = 0; $i < (int) $request->input('descendants_count', 0); $i++) {
-            $rules["descendant_ci_$i"] = $fileMimes; $rules["descendant_photo_$i"] = $fileMimes;
+        for ($i = 0; $i < $descendantsCount; $i++) {
+            $rules["descendant_nom_$i"]   = ['nullable', 'string', 'max:255'];
+            $rules["descendant_ci_$i"]    = $fileRule;
+            $rules["descendant_photo_$i"] = $fileRule;
         }
+
         $request->validate($rules);
 
-        // Determine if this is an update
-        $existing = session('submitted_id') ? Submission::find(session('submitted_id')) : null;
+        $existing = $request->session()->get('submitted_id')
+            ? Submission::find($request->session()->get('submitted_id'))
+            : null;
 
-        // Reuse existing folder or create new one
+        if ($existing && $existing->phone !== $request->session()->get('verified_phone')) {
+            // Session refers to a submission that doesn't belong to the verified phone.
+            $existing = null;
+        }
+
         if ($existing) {
             $anyPath = $existing->ci_employe ?? $existing->photo_employe
                     ?? $existing->ci_pere    ?? $existing->ci_mere;
             $folder  = $anyPath
                 ? dirname($anyPath)
-                : 'submissions/' . Str::slug($request->nom_complet) . '_' . $existing->created_at->timestamp;
+                : 'submissions/' . Str::slug($request->input('nom_complet')) . '_' . $existing->created_at->timestamp;
         } else {
-            $folder = 'submissions/' . Str::slug($request->nom_complet) . '_' . time();
+            $folder = 'submissions/' . Str::slug($request->input('nom_complet')) . '_' . time() . '_' . Str::random(6);
         }
 
-        // Store new file or fall back to old path
-        $storeFile = function ($file, $name, $oldPath = null) use ($folder) {
-            if (!$file) return $oldPath;
-            $ext = $file->getClientOriginalExtension();
-            return $file->storeAs($folder, $name . '.' . $ext, 'public');
+        $storeFile = function ($file, string $name, ?string $oldPath = null) use ($folder): ?string {
+            if (!$file) {
+                return $this->isOwnedPath($oldPath, $folder) ? $oldPath : null;
+            }
+            $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension());
+            return $file->storeAs($folder, $name . '.' . $ext, self::DISK);
         };
 
         $ci_employe    = $storeFile($request->file('ci_employe'),    'ci_employe',    $existing?->ci_employe);
@@ -80,11 +123,9 @@ class SubmissionController extends Controller
         $ci_conjoint   = $storeFile($request->file('ci_conjoint'),   'ci_conjoint',   $existing?->ci_conjoint);
         $photo_conjoint= $storeFile($request->file('photo_conjoint'),'photo_conjoint',$existing?->photo_conjoint);
 
-        // Fratrie (combined) – preserve old file paths via hidden inputs
         $freres = [];
         $soeurs = [];
-        $count  = (int) $request->input('fratrie_count', 0);
-        for ($i = 0; $i < $count; $i++) {
+        for ($i = 0; $i < $fratrieCount; $i++) {
             $item = [
                 'nom'   => $request->input("fratrie_nom_$i"),
                 'ci'    => $storeFile($request->file("fratrie_ci_$i"),    "fratrie_{$i}_ci",    $request->input("fratrie_ci_old_$i")),
@@ -97,10 +138,8 @@ class SubmissionController extends Controller
             }
         }
 
-        // Descendants – preserve old file paths via hidden inputs
         $descendants = [];
-        $dcount = (int) $request->input('descendants_count', 0);
-        for ($i = 0; $i < $dcount; $i++) {
+        for ($i = 0; $i < $descendantsCount; $i++) {
             $descendants[] = [
                 'nom'   => $request->input("descendant_nom_$i"),
                 'ci'    => $storeFile($request->file("descendant_ci_$i"),    "descendant_{$i}_ci",    $request->input("descendant_ci_old_$i")),
@@ -109,20 +148,20 @@ class SubmissionController extends Controller
         }
 
         $data = [
-            'nom_complet'         => $request->nom_complet,
-            'phone'               => session('verified_phone'),
-            'situation_familiale' => $request->situation_familiale,
+            'nom_complet'         => $request->input('nom_complet'),
+            'phone'               => $request->session()->get('verified_phone'),
+            'situation_familiale' => $request->input('situation_familiale'),
             'ci_employe'          => $ci_employe,
             'photo_employe'       => $photo_employe,
-            'nom_pere'            => $request->nom_pere,
+            'nom_pere'            => $request->input('nom_pere'),
             'ci_pere'             => $ci_pere,
             'photo_pere'          => $photo_pere,
-            'nom_mere'            => $request->nom_mere,
+            'nom_mere'            => $request->input('nom_mere'),
             'ci_mere'             => $ci_mere,
             'photo_mere'          => $photo_mere,
             'freres'              => $freres,
             'soeurs'              => $soeurs,
-            'nom_conjoint'        => $request->nom_conjoint,
+            'nom_conjoint'        => $request->input('nom_conjoint'),
             'ci_conjoint'         => $ci_conjoint,
             'photo_conjoint'      => $photo_conjoint,
             'descendants'         => $descendants,
@@ -135,7 +174,13 @@ class SubmissionController extends Controller
             $submission = Submission::create($data);
         }
 
-        session(['submitted_id' => $submission->id]);
+        $request->session()->put('submitted_id', $submission->id);
+
+        Log::info('Submission saved', [
+            'id'      => $submission->id,
+            'updated' => (bool) $existing,
+            'phone'   => $submission->phone,
+        ]);
 
         return response()->json([
             'success'       => true,
@@ -144,43 +189,31 @@ class SubmissionController extends Controller
         ]);
     }
 
-    public function resetSession()
+    public function resetSession(Request $request)
     {
-        session()->forget(['submitted_id', 'phone_verified', 'verified_phone', 'otp_phone']);
+        $request->session()->forget([
+            'submitted_id', 'phone_verified', 'verified_phone',
+            'otp_phone', 'otp_code', 'otp_expires_at', 'otp_attempts',
+        ]);
         return redirect()->route('form');
     }
 
-    public function download(Submission $submission)
+    public function download(Request $request, Submission $submission)
     {
-        if (session('submitted_id') !== $submission->id) {
+        if ($request->session()->get('submitted_id') !== $submission->id) {
             abort(403);
         }
-
-        $writer   = new Xlsx($this->buildSpreadsheet(collect([$submission])));
-        $filename = 'fiche_' . Str::slug($submission->nom_complet) . '_' . $submission->created_at->format('Ymd') . '.xlsx';
-
-        return response()->streamDownload(function () use ($writer) {
-            $writer->save('php://output');
-        }, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ]);
+        return $this->streamSubmissionXlsx($submission);
     }
 
     public function adminDownload(Submission $submission)
     {
-        $writer   = new Xlsx($this->buildSpreadsheet(collect([$submission])));
-        $filename = 'fiche_' . Str::slug($submission->nom_complet) . '_' . $submission->created_at->format('Ymd') . '.xlsx';
-
-        return response()->streamDownload(function () use ($writer) {
-            $writer->save('php://output');
-        }, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ]);
+        return $this->streamSubmissionXlsx($submission);
     }
 
     public function index()
     {
-        $submissions = Submission::latest()->get();
+        $submissions = Submission::latest()->paginate(50);
         return view('admin.index', compact('submissions'));
     }
 
@@ -193,7 +226,7 @@ class SubmissionController extends Controller
     {
         $submissions = Submission::latest()->get();
         $writer      = new Xlsx($this->buildSpreadsheet($submissions));
-        $filename    = 'cnass_submissions_' . date('Y-m-d') . '.xlsx';
+        $filename    = 'cnass_submissions_' . date('Y-m-d_His') . '.xlsx';
 
         return response()->streamDownload(function () use ($writer) {
             $writer->save('php://output');
@@ -202,9 +235,90 @@ class SubmissionController extends Controller
         ]);
     }
 
+    /**
+     * Serve a submission file. Admins may access any file; the submission's
+     * owner may access their own files via the session-tracked submitted_id.
+     */
+    public function serveFile(Request $request, Submission $submission, string $key)
+    {
+        $isAdmin   = $request->session()->get('admin_authenticated') === true;
+        $isOwner   = $request->session()->get('submitted_id') === $submission->id;
+
+        if (!$isAdmin && !$isOwner) {
+            abort(403);
+        }
+
+        $path = $this->resolveFilePath($submission, $key);
+        if (!$path || !Storage::disk(self::DISK)->exists($path)) {
+            abort(404);
+        }
+
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+        $filename    = basename($path);
+
+        return Storage::disk(self::DISK)->response($path, $filename, [], $disposition);
+    }
+
+    public function adminLogout(Request $request)
+    {
+        $request->session()->forget('admin_authenticated');
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('admin.index');
+    }
+
+    /**
+     * Map a "key" (e.g. "ci_employe", "fratrie.0.ci", "descendants.2.photo")
+     * back to the stored file path on the submission.
+     */
+    private function resolveFilePath(Submission $submission, string $key): ?string
+    {
+        $simple = [
+            'ci_employe', 'photo_employe',
+            'ci_pere',    'photo_pere',
+            'ci_mere',    'photo_mere',
+            'ci_conjoint','photo_conjoint',
+        ];
+        if (in_array($key, $simple, true)) {
+            return $submission->{$key} ?? null;
+        }
+
+        if (preg_match('/^(freres|soeurs|descendants)\.(\d+)\.(ci|photo)$/', $key, $m)) {
+            $list = $submission->{$m[1]} ?? [];
+            return $list[(int) $m[2]][$m[3]] ?? null;
+        }
+
+        return null;
+    }
+
+    /** Reject paths that do not belong to this submission's folder. */
+    private function isOwnedPath(?string $oldPath, string $folder): bool
+    {
+        if (!$oldPath) return false;
+        $oldPath = ltrim((string) $oldPath, '/');
+        return str_starts_with($oldPath, $folder . '/');
+    }
+
+    private function streamSubmissionXlsx(Submission $submission)
+    {
+        $writer   = new Xlsx($this->buildSpreadsheet(collect([$submission])));
+        $filename = 'fiche_' . Str::slug($submission->nom_complet) . '_' . $submission->created_at->format('Ymd') . '.xlsx';
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    private function fileLink(Submission $submission, string $key): ?string
+    {
+        if (!$this->resolveFilePath($submission, $key)) return null;
+        return URL::route('files.show', ['submission' => $submission->id, 'key' => $key]);
+    }
+
     private function buildSpreadsheet(\Illuminate\Support\Collection $submissions): Spreadsheet
     {
-        $baseUrl     = config('app.url');
         $spreadsheet = new Spreadsheet();
         $sheet       = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Soumissions');
@@ -218,31 +332,30 @@ class SubmissionController extends Controller
         ]);
         $sheet->freezePane('A2');
 
-        $coord = fn(int $c, int $r): string =>
-            \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $r;
+        $coord = fn(int $c, int $r): string => Coordinate::stringFromColumnIndex($c) . $r;
 
         $row = 2;
 
         $writeRow = function (
-            string $type, ?string $nom, ?string $situation,
-            ?string $ciPath, ?string $photoPath, ?string $date, string $bgColor
-        ) use ($sheet, &$row, $coord, $baseUrl) {
+            Submission $s, string $type, ?string $nom, ?string $situation,
+            ?string $ciKey, ?string $photoKey, ?string $date, string $bgColor
+        ) use ($sheet, &$row, $coord) {
             $sheet->fromArray([$type, $nom ?? '', $situation ?? '', '', '', $date ?? ''], null, "A{$row}");
             $sheet->getStyle("A{$row}:F{$row}")->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
             ]);
             $sheet->getStyle("A{$row}")->getFont()->setBold(true);
 
-            if ($ciPath) {
+            if ($ciKey && $url = $this->fileLink($s, $ciKey)) {
                 $c = $coord(4, $row);
                 $sheet->setCellValue($c, 'Voir CI');
-                $sheet->getCell($c)->setHyperlink(new Hyperlink($baseUrl . '/storage/' . $ciPath, 'Voir CI'));
+                $sheet->getCell($c)->setHyperlink(new Hyperlink($url, 'Voir CI'));
                 $sheet->getStyle($c)->applyFromArray(['font' => ['color' => ['rgb' => '1155CC'], 'underline' => Font::UNDERLINE_SINGLE]]);
             }
-            if ($photoPath) {
+            if ($photoKey && $url = $this->fileLink($s, $photoKey)) {
                 $c = $coord(5, $row);
                 $sheet->setCellValue($c, 'Voir Photo');
-                $sheet->getCell($c)->setHyperlink(new Hyperlink($baseUrl . '/storage/' . $photoPath, 'Voir Photo'));
+                $sheet->getCell($c)->setHyperlink(new Hyperlink($url, 'Voir Photo'));
                 $sheet->getStyle($c)->applyFromArray(['font' => ['color' => ['rgb' => '1155CC'], 'underline' => Font::UNDERLINE_SINGLE]]);
             }
             $row++;
@@ -255,18 +368,18 @@ class SubmissionController extends Controller
 
         foreach ($submissions as $s) {
             $date = $s->created_at->format('d/m/Y H:i');
-            $writeRow('Employé',    $s->nom_complet,  $s->situation_familiale, $s->ci_employe,  $s->photo_employe,  $date, $colors['employe']);
-            if ($s->nom_pere   || $s->ci_pere   || $s->photo_pere)   $writeRow('Père',       $s->nom_pere,    null, $s->ci_pere,    $s->photo_pere,    null, $colors['pere']);
-            if ($s->nom_mere   || $s->ci_mere   || $s->photo_mere)   $writeRow('Mère',       $s->nom_mere,    null, $s->ci_mere,    $s->photo_mere,    null, $colors['mere']);
-            if ($s->nom_conjoint||$s->ci_conjoint||$s->photo_conjoint)$writeRow('Conjoint(e)',$s->nom_conjoint,null,$s->ci_conjoint,$s->photo_conjoint,null, $colors['conjoint']);
-            foreach ($s->descendants ?? [] as $i => $d) $writeRow('Descendant '.($i+1), $d['nom']??null, null, $d['ci']??null, $d['photo']??null, null, $colors['descendant']);
-            foreach ($s->freres    ?? [] as $i => $f) $writeRow('Frère '.($i+1),       $f['nom']??null, null, $f['ci']??null, $f['photo']??null, null, $colors['sibling']);
-            foreach ($s->soeurs    ?? [] as $i => $sr)$writeRow('Sœur '.($i+1),        $sr['nom']??null,null, $sr['ci']??null,$sr['photo']??null,null, $colors['sibling']);
+            $writeRow($s, 'Employé',    $s->nom_complet,  $s->situation_familiale, 'ci_employe',  'photo_employe',  $date, $colors['employe']);
+            if ($s->nom_pere   || $s->ci_pere   || $s->photo_pere)   $writeRow($s, 'Père',       $s->nom_pere,    null, 'ci_pere',    'photo_pere',    null, $colors['pere']);
+            if ($s->nom_mere   || $s->ci_mere   || $s->photo_mere)   $writeRow($s, 'Mère',       $s->nom_mere,    null, 'ci_mere',    'photo_mere',    null, $colors['mere']);
+            if ($s->nom_conjoint||$s->ci_conjoint||$s->photo_conjoint)$writeRow($s, 'Conjoint(e)',$s->nom_conjoint,null,'ci_conjoint','photo_conjoint',null, $colors['conjoint']);
+            foreach ($s->descendants ?? [] as $i => $d) $writeRow($s, 'Descendant '.($i+1), $d['nom']??null, null, "descendants.$i.ci", "descendants.$i.photo", null, $colors['descendant']);
+            foreach ($s->freres    ?? [] as $i => $f) $writeRow($s, 'Frère '.($i+1),       $f['nom']??null, null, "freres.$i.ci",    "freres.$i.photo",    null, $colors['sibling']);
+            foreach ($s->soeurs    ?? [] as $i => $sr)$writeRow($s, 'Sœur '.($i+1),        $sr['nom']??null,null, "soeurs.$i.ci",    "soeurs.$i.photo",    null, $colors['sibling']);
             $row++;
         }
 
         foreach (range(1, 6) as $colIndex) {
-            $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex))->setAutoSize(true);
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($colIndex))->setAutoSize(true);
         }
 
         return $spreadsheet;

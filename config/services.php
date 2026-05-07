@@ -36,9 +36,12 @@ return [
     ],
 
     'twilio' => [
-        'sid'        => env('TWILIO_SID'),
-        'token'      => env('TWILIO_AUTH_TOKEN'),
-        'verify_sid' => env('TWILIO_VERIFY_SID'),
+        'sid'           => env('TWILIO_SID'),
+        'token'         => env('TWILIO_AUTH_TOKEN'),
+        'verify_sid'    => env('TWILIO_VERIFY_SID'),
+        // Sender for WhatsApp messages. Default is Twilio's sandbox number.
+        // For production replace with your approved WhatsApp Business sender.
+        'whatsapp_from' => env('TWILIO_WHATSAPP_FROM', 'whatsapp:+14155238886'),
     ],
 
 ];

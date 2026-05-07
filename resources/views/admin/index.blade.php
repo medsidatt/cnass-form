@@ -32,23 +32,39 @@
     </style>
 </head>
 <body>
+@php
+    use App\Models\Submission;
+    $totals = [
+        'all'         => Submission::count(),
+        'marié(e)'    => Submission::where('situation_familiale', 'marié(e)')->count(),
+        'célibataire' => Submission::where('situation_familiale', 'célibataire')->count(),
+    ];
+@endphp
 <div class="topbar">
     <h1>Tableau de bord – Soumissions CNASS</h1>
-    <a href="{{ route('admin.exportExcel') }}">Exporter Excel</a>
+    <div style="display:flex;gap:10px;align-items:center">
+        <a href="{{ route('admin.exportExcel') }}">Exporter Excel</a>
+        <form method="POST" action="{{ route('admin.logout') }}" style="display:inline">
+            @csrf
+            <button type="submit" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 14px;border-radius:4px;font-size:.85rem;cursor:pointer">
+                Déconnexion
+            </button>
+        </form>
+    </div>
 </div>
 
 <div class="content">
     <div class="stats">
         <div class="stat-card">
-            <div class="value">{{ $submissions->count() }}</div>
+            <div class="value">{{ $totals['all'] }}</div>
             <div class="label">Total soumissions</div>
         </div>
         <div class="stat-card">
-            <div class="value">{{ $submissions->where('situation_familiale', 'marié(e)')->count() }}</div>
+            <div class="value">{{ $totals['marié(e)'] }}</div>
             <div class="label">Mariés</div>
         </div>
         <div class="stat-card">
-            <div class="value">{{ $submissions->where('situation_familiale', 'célibataire')->count() }}</div>
+            <div class="value">{{ $totals['célibataire'] }}</div>
             <div class="label">Célibataires</div>
         </div>
     </div>
@@ -88,6 +104,7 @@
         @endforeach
         </tbody>
     </table>
+    <div style="margin-top:18px">{{ $submissions->links() }}</div>
     @endif
 </div>
 </body>

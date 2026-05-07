@@ -224,14 +224,14 @@
                             <label>Carte d'identité</label>
                             <input type="file" name="ci_employe" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->ci_employe))
-                                <div class="file-existing"><a href="{{ Storage::url($existing->ci_employe) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ route('files.show', ['submission' => $existing, 'key' => 'ci_employe']) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
                             <input type="file" name="photo_employe" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->photo_employe))
-                                <div class="file-existing"><a href="{{ Storage::url($existing->photo_employe) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ route('files.show', ['submission' => $existing, 'key' => 'photo_employe']) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                     </div>
@@ -250,14 +250,14 @@
                             <label>Carte d'identité</label>
                             <input type="file" name="ci_pere" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->ci_pere))
-                                <div class="file-existing"><a href="{{ Storage::url($existing->ci_pere) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ route('files.show', ['submission' => $existing, 'key' => 'ci_pere']) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
                             <input type="file" name="photo_pere" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->photo_pere))
-                                <div class="file-existing"><a href="{{ Storage::url($existing->photo_pere) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ route('files.show', ['submission' => $existing, 'key' => 'photo_pere']) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                     </div>
@@ -276,14 +276,14 @@
                             <label>Carte d'identité</label>
                             <input type="file" name="ci_mere" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->ci_mere))
-                                <div class="file-existing"><a href="{{ Storage::url($existing->ci_mere) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ route('files.show', ['submission' => $existing, 'key' => 'ci_mere']) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
                             <input type="file" name="photo_mere" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->photo_mere))
-                                <div class="file-existing"><a href="{{ Storage::url($existing->photo_mere) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ route('files.show', ['submission' => $existing, 'key' => 'photo_mere']) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                     </div>
@@ -302,14 +302,14 @@
                             <label>Carte d'identité</label>
                             <input type="file" name="ci_conjoint" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->ci_conjoint))
-                                <div class="file-existing"><a href="{{ Storage::url($existing->ci_conjoint) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ route('files.show', ['submission' => $existing, 'key' => 'ci_conjoint']) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                         <div class="field">
                             <label>Photo</label>
                             <input type="file" name="photo_conjoint" accept=".jpg,.jpeg,.pdf">
                             @if(!empty($existing->photo_conjoint))
-                                <div class="file-existing"><a href="{{ Storage::url($existing->photo_conjoint) }}" target="_blank">Fichier actuel</a></div>
+                                <div class="file-existing"><a href="{{ route('files.show', ['submission' => $existing, 'key' => 'photo_conjoint']) }}" target="_blank">Fichier actuel</a></div>
                             @endif
                         </div>
                     </div>
@@ -360,11 +360,22 @@
 
 {{-- Pre-fill data for JS --}}
 @if($existing)
+@php
+    $withUrls = function (array $items, string $listKey) use ($existing) {
+        return collect($items)->map(function ($item, $i) use ($existing, $listKey) {
+            $item['_ci_url']    = !empty($item['ci'])
+                ? route('files.show', ['submission' => $existing, 'key' => "$listKey.$i.ci"]) : '';
+            $item['_photo_url'] = !empty($item['photo'])
+                ? route('files.show', ['submission' => $existing, 'key' => "$listKey.$i.photo"]) : '';
+            return $item;
+        })->all();
+    };
+@endphp
 <script>
 window._prefill = {
-    freres:      @json($existing->freres      ?? []),
-    soeurs:      @json($existing->soeurs      ?? []),
-    descendants: @json($existing->descendants ?? []),
+    freres:      @json($withUrls($existing->freres      ?? [], 'freres')),
+    soeurs:      @json($withUrls($existing->soeurs      ?? [], 'soeurs')),
+    descendants: @json($withUrls($existing->descendants ?? [], 'descendants')),
 };
 </script>
 @endif
@@ -436,25 +447,27 @@ function addDescendant(prefill) {
     div.className = 'member-card'; div.id = 'descendant-' + i;
     const ciOld    = prefill?.ci    ?? '';
     const photoOld = prefill?.photo ?? '';
+    const ciUrl    = prefill?._ci_url    ?? '';
+    const photoUrl = prefill?._photo_url ?? '';
     div.innerHTML = `
         <div class="card-label">Descendant ${i + 1}</div>
         <button type="button" class="remove-btn" onclick="removeMember('descendant-${i}','descendants_count','descendants-container')">Supprimer</button>
-        <input type="hidden" name="descendant_ci_old_${i}"    value="${ciOld}">
-        <input type="hidden" name="descendant_photo_old_${i}" value="${photoOld}">
+        <input type="hidden" name="descendant_ci_old_${i}"    value="${escapeAttr(ciOld)}">
+        <input type="hidden" name="descendant_photo_old_${i}" value="${escapeAttr(photoOld)}">
         <div class="grid-3">
             <div class="field span-3">
                 <label>Nom complet</label>
-                <input type="text" name="descendant_nom_${i}" placeholder="Prénom et Nom" value="${prefill?.nom ?? ''}">
+                <input type="text" name="descendant_nom_${i}" placeholder="Prénom et Nom" value="${escapeAttr(prefill?.nom ?? '')}">
             </div>
             <div class="field">
                 <label>Carte d'identité</label>
                 <input type="file" name="descendant_ci_${i}" accept=".jpg,.jpeg,.pdf">
-                ${ciOld ? '<div class="file-existing"><a href="/storage/'+ciOld+'" target="_blank">Fichier actuel</a></div>' : ''}
+                ${ciUrl ? '<div class="file-existing"><a href="'+escapeAttr(ciUrl)+'" target="_blank">Fichier actuel</a></div>' : ''}
             </div>
             <div class="field">
                 <label>Photo</label>
                 <input type="file" name="descendant_photo_${i}" accept=".jpg,.jpeg,.pdf">
-                ${photoOld ? '<div class="file-existing"><a href="/storage/'+photoOld+'" target="_blank">Fichier actuel</a></div>' : ''}
+                ${photoUrl ? '<div class="file-existing"><a href="'+escapeAttr(photoUrl)+'" target="_blank">Fichier actuel</a></div>' : ''}
             </div>
         </div>`;
     document.getElementById('descendants-container').appendChild(div);
@@ -469,11 +482,13 @@ function addFratrie(prefill) {
     const type     = prefill?._type ?? 'frere';
     const ciOld    = prefill?.ci    ?? '';
     const photoOld = prefill?.photo ?? '';
+    const ciUrl    = prefill?._ci_url    ?? '';
+    const photoUrl = prefill?._photo_url ?? '';
     div.innerHTML = `
         <div class="card-label">Membre ${i + 1}</div>
         <button type="button" class="remove-btn" onclick="removeMember('fratrie-${i}','fratrie_count','fratrie-container')">Supprimer</button>
-        <input type="hidden" name="fratrie_ci_old_${i}"    value="${ciOld}">
-        <input type="hidden" name="fratrie_photo_old_${i}" value="${photoOld}">
+        <input type="hidden" name="fratrie_ci_old_${i}"    value="${escapeAttr(ciOld)}">
+        <input type="hidden" name="fratrie_photo_old_${i}" value="${escapeAttr(photoOld)}">
         <div class="grid-3">
             <div class="field">
                 <label>Type</label>
@@ -484,17 +499,17 @@ function addFratrie(prefill) {
             </div>
             <div class="field span-2" style="grid-column:span 2">
                 <label>Nom complet</label>
-                <input type="text" name="fratrie_nom_${i}" placeholder="Prénom et Nom" value="${prefill?.nom ?? ''}">
+                <input type="text" name="fratrie_nom_${i}" placeholder="Prénom et Nom" value="${escapeAttr(prefill?.nom ?? '')}">
             </div>
             <div class="field">
                 <label>Carte d'identité</label>
                 <input type="file" name="fratrie_ci_${i}" accept=".jpg,.jpeg,.pdf">
-                ${ciOld ? '<div class="file-existing"><a href="/storage/'+ciOld+'" target="_blank">Fichier actuel</a></div>' : ''}
+                ${ciUrl ? '<div class="file-existing"><a href="'+escapeAttr(ciUrl)+'" target="_blank">Fichier actuel</a></div>' : ''}
             </div>
             <div class="field">
                 <label>Photo</label>
                 <input type="file" name="fratrie_photo_${i}" accept=".jpg,.jpeg,.pdf">
-                ${photoOld ? '<div class="file-existing"><a href="/storage/'+photoOld+'" target="_blank">Fichier actuel</a></div>' : ''}
+                ${photoUrl ? '<div class="file-existing"><a href="'+escapeAttr(photoUrl)+'" target="_blank">Fichier actuel</a></div>' : ''}
             </div>
         </div>`;
     document.getElementById('fratrie-container').appendChild(div);
@@ -529,7 +544,8 @@ document.getElementById('cnass-form').addEventListener('submit', async function 
             const name = fd.get('nom_complet');
             document.getElementById('success-title').textContent = data.updated ? 'Fiche mise à jour' : 'Fiche enregistrée';
             document.getElementById('success-name').textContent  = name;
-            document.getElementById('dl-link').href = DL_BASE + '/' + data.submission_id;
+            const dl = document.getElementById('dl-link');
+            if (dl) dl.href = DL_BASE + '/' + data.submission_id;
             hideEl('panel-form');
             showEl('panel-download');
         } else {
@@ -566,6 +582,9 @@ async function postJson(url, body) {
 function showEl(id) { document.getElementById(id)?.classList.remove('hidden'); }
 function hideEl(id) { document.getElementById(id)?.classList.add('hidden'); }
 function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove('hidden'); }
+function escapeAttr(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
 // ── Init: if server already verified, pre-fill dynamic sections ───────────────
 document.addEventListener('DOMContentLoaded', () => {
