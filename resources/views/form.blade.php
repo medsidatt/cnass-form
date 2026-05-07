@@ -92,6 +92,43 @@
         .input-row input { flex: 1; }
         .otp-input { letter-spacing: .35em; font-size: 1.1rem; text-align: center; }
 
+        /* OTP info block (phone + expiry) */
+        .otp-info { display: flex; align-items: stretch; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9px; padding: 14px 18px; margin-bottom: 22px; gap: 18px; }
+        .otp-info-row { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+        .otp-info-icon { font-size: 1.3rem; flex-shrink: 0; }
+        .otp-info-label { font-size: .68rem; color: #64748b; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+        .otp-info-value { font-size: .92rem; color: #1e293b; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .otp-info-row.warn .otp-info-value { color: #d97706; }
+        .otp-info-row.danger .otp-info-value { color: #dc2626; }
+        .otp-info-divider { width: 1px; background: #e2e8f0; }
+        @media (max-width: 480px) {
+            .otp-info { flex-direction: column; gap: 12px; }
+            .otp-info-divider { width: 100%; height: 1px; }
+        }
+
+        /* Resend block */
+        .resend-block { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 9px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+        .resend-question { font-size: .82rem; color: #0369a1; }
+        .btn-resend {
+            position: relative;
+            background: #fff; color: #1a3a6e;
+            border: 1px solid #1a3a6e;
+            padding: 10px 18px; border-radius: 7px;
+            font-size: .85rem; font-weight: 600;
+            cursor: pointer; overflow: hidden;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: background .15s, color .15s;
+        }
+        .btn-resend:not(:disabled):hover { background: #1a3a6e; color: #fff; }
+        .btn-resend:disabled { color: #64748b; border-color: #cbd5e1; background: #f1f5f9; cursor: not-allowed; }
+        .btn-resend > span:first-child { position: relative; z-index: 1; }
+        .resend-progress {
+            position: absolute; left: 0; bottom: 0;
+            height: 3px; background: #1a3a6e;
+            width: 0%;
+            transition: width 1s linear;
+        }
+
         /* Alerts */
         .alert { padding: 12px 16px; border-radius: 7px; margin-bottom: 16px; font-size: .84rem; }
         .alert-error { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
@@ -160,25 +197,42 @@
 
                 <div id="otp-step" class="hidden">
                     <div id="err-otp" class="alert alert-error hidden"></div>
-                    <p style="font-size:.84rem;color:#64748b;margin-bottom:8px">
-                        Code envoyé sur WhatsApp au <strong id="phone-display"></strong>. Consultez votre WhatsApp.
-                    </p>
-                    <p id="otp-expiry" style="font-size:.78rem;color:#94a3b8;margin-bottom:16px">
-                        Code valide pendant <strong id="otp-expiry-time">15:00</strong>.
-                    </p>
-                    <div class="field" style="margin-bottom:16px">
+
+                    <div class="otp-info">
+                        <div class="otp-info-row">
+                            <span class="otp-info-icon" aria-hidden="true">📱</span>
+                            <div>
+                                <div class="otp-info-label">Numéro vérifié</div>
+                                <div class="otp-info-value"><strong id="phone-display"></strong></div>
+                            </div>
+                        </div>
+                        <div class="otp-info-divider"></div>
+                        <div class="otp-info-row" id="otp-expiry">
+                            <span class="otp-info-icon" aria-hidden="true">⏱️</span>
+                            <div>
+                                <div class="otp-info-label">Expire dans</div>
+                                <div class="otp-info-value" id="otp-expiry-time">15:00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field" style="margin-bottom:18px">
                         <label>Code de vérification (6 chiffres)</label>
                         <div class="input-row">
                             <input type="text" id="otp-input" class="otp-input" maxlength="6" placeholder="· · · · · ·" inputmode="numeric" autocomplete="one-time-code">
                             <button type="button" class="btn btn-primary" id="btn-verify" onclick="verifyOtp()">Vérifier</button>
                         </div>
                     </div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-                        <button type="button" class="btn-link" onclick="resetPhone()">← Changer de numéro</button>
-                        <button type="button" class="btn-link" id="btn-resend" onclick="resendOtp()" disabled>
-                            Renvoyer dans <span id="resend-countdown">60</span>s
+
+                    <div class="resend-block">
+                        <span class="resend-question">Vous n'avez pas reçu le code&nbsp;?</span>
+                        <button type="button" class="btn btn-resend" id="btn-resend" onclick="resendOtp()" disabled>
+                            <span id="btn-resend-label">Renvoyer dans <span id="resend-countdown">60</span>s</span>
+                            <span class="resend-progress" id="resend-progress"></span>
                         </button>
                     </div>
+
+                    <button type="button" class="btn-link" onclick="resetPhone()" style="margin-top:18px">← Changer de numéro</button>
                 </div>
             </div>
         </div>
@@ -432,11 +486,12 @@ async function sendOtp() {
 }
 
 async function resendOtp() {
-    const btn = document.getElementById('btn-resend');
+    const btn   = document.getElementById('btn-resend');
+    const label = document.getElementById('btn-resend-label');
     if (btn.disabled) return;
-    const phone = (document.getElementById('phone-display').textContent || '').replace(/^\+222/, '');
+    const phone = (document.getElementById('phone-display').textContent || '').replace(/^\+222\s*/, '').replace(/\s+/g, '');
     if (!phone) return;
-    btn.disabled = true; btn.textContent = 'Envoi…';
+    btn.disabled = true; label.textContent = 'Envoi…';
     hideEl('err-otp');
     try {
         const data = await postJson(SEND_URL, { phone });
@@ -493,47 +548,64 @@ function startExpiryCountdown() {
     if (_expiryTimer) clearInterval(_expiryTimer);
     let remaining = OTP_TTL_SECONDS;
     const el     = document.getElementById('otp-expiry-time');
-    const wrap   = document.getElementById('otp-expiry');
+    const row    = document.getElementById('otp-expiry');
     const verify = document.getElementById('btn-verify');
+    row.classList.remove('warn', 'danger');
     el.textContent = fmtMMSS(remaining);
-    wrap.style.color = '#94a3b8';
+    verify.disabled = false;
     _expiryTimer = setInterval(() => {
         remaining -= 1;
         if (remaining <= 0) {
             clearInterval(_expiryTimer); _expiryTimer = null;
-            el.textContent = '00:00';
-            wrap.style.color = '#dc2626';
-            wrap.innerHTML = 'Code expiré. <a href="#" onclick="resendOtp();return false" style="color:#1a3a6e;font-weight:600">Renvoyer un nouveau code</a>.';
+            el.textContent = 'Expiré';
+            row.classList.remove('warn');
+            row.classList.add('danger');
             verify.disabled = true;
             // Allow immediate resend once expired.
-            const btn = document.getElementById('btn-resend');
-            btn.disabled = false; btn.textContent = 'Renvoyer le code';
-            if (_resendTimer) { clearInterval(_resendTimer); _resendTimer = null; }
+            unlockResend();
             return;
         }
         el.textContent = fmtMMSS(remaining);
-        if (remaining <= 60) wrap.style.color = '#dc2626';
-        else if (remaining <= 180) wrap.style.color = '#d97706';
+        if (remaining <= 60) { row.classList.remove('warn'); row.classList.add('danger'); }
+        else if (remaining <= 180) { row.classList.add('warn'); row.classList.remove('danger'); }
     }, 1000);
 }
 function startResendCountdown() {
     if (_resendTimer) clearInterval(_resendTimer);
     let remaining = RESEND_COOLDOWN_S;
-    const btn = document.getElementById('btn-resend');
-    const num = document.getElementById('resend-countdown');
+    const btn      = document.getElementById('btn-resend');
+    const label    = document.getElementById('btn-resend-label');
+    const progress = document.getElementById('resend-progress');
     btn.disabled = true;
-    btn.innerHTML = 'Renvoyer dans <span id="resend-countdown">' + remaining + '</span>s';
+    label.innerHTML = 'Renvoyer dans <span id="resend-countdown">' + remaining + '</span>s';
+    if (progress) {
+        progress.style.transition = 'none';
+        progress.style.width = '100%';
+        // Force reflow so the next transition applies cleanly.
+        // eslint-disable-next-line no-unused-expressions
+        progress.offsetWidth;
+        progress.style.transition = 'width ' + RESEND_COOLDOWN_S + 's linear';
+        progress.style.width = '0%';
+    }
     _resendTimer = setInterval(() => {
         remaining -= 1;
         if (remaining <= 0) {
             clearInterval(_resendTimer); _resendTimer = null;
-            btn.disabled = false;
-            btn.textContent = 'Renvoyer le code';
+            unlockResend();
             return;
         }
         const live = document.getElementById('resend-countdown');
         if (live) live.textContent = remaining;
     }, 1000);
+}
+function unlockResend() {
+    if (_resendTimer) { clearInterval(_resendTimer); _resendTimer = null; }
+    const btn      = document.getElementById('btn-resend');
+    const label    = document.getElementById('btn-resend-label');
+    const progress = document.getElementById('resend-progress');
+    btn.disabled = false;
+    label.textContent = 'Renvoyer le code';
+    if (progress) { progress.style.transition = 'none'; progress.style.width = '0%'; }
 }
 
 // ── Dynamic members ───────────────────────────────────────────────────────────
