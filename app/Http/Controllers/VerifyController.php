@@ -10,6 +10,7 @@ class VerifyController extends Controller
 {
     private const MAX_ATTEMPTS    = 5;
     private const OTP_TTL_MINUTES = 15;
+    private const CHANNEL         = 'whatsapp';
 
     private function twilio(): Client
     {
@@ -19,18 +20,21 @@ class VerifyController extends Controller
         );
     }
 
-    private function whatsappFrom(): string
+    private function verifyServiceSid(): ?string
     {
-        return (string) config('services.twilio.whatsapp_from');
+        $sid = (string) config('services.twilio.verify_sid');
+        return $sid !== '' ? $sid : null;
     }
 
     private function isDevMode(): bool
     {
-        return empty(config('services.twilio.sid')) || empty(config('services.twilio.token'));
+        return empty(config('services.twilio.sid'))
+            || empty(config('services.twilio.token'))
+            || empty(config('services.twilio.verify_sid'));
     }
 
     /**
-     * Step 1 — generate OTP and send via WhatsApp.
+     * Step 1 — ask Twilio Verify to deliver an OTP via WhatsApp.
      */
     public function send(Request $request)
     {
@@ -40,32 +44,34 @@ class VerifyController extends Controller
 
         $phone = $this->normalizePhone($request->input('phone'));
 
-        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
         $request->session()->put([
             'otp_phone'      => $phone,
-            'otp_code'       => $otp,
             'otp_expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES)->timestamp,
             'otp_attempts'   => 0,
         ]);
 
         if ($this->isDevMode()) {
-            Log::info('OTP sent (dev mode)', ['phone' => $phone]);
+            Log::info('OTP send (dev mode)', ['phone' => $phone]);
             return response()->json(['success' => true, 'dev' => true]);
         }
 
         try {
-            $this->twilio()->messages->create(
-                'whatsapp:' . $phone,
-                [
-                    'from' => $this->whatsappFrom(),
-                    'body' => "Votre code de vérification CNASS est : *{$otp}*\n\nCe code est valable " . self::OTP_TTL_MINUTES . " minutes.",
-                ]
-            );
+            $verification = $this->twilio()
+                ->verify->v2
+                ->services($this->verifyServiceSid())
+                ->verifications
+                ->create($phone, self::CHANNEL);
+
+            Log::info('Twilio Verify send', [
+                'phone'   => $phone,
+                'sid'     => $verification->sid,
+                'status'  => $verification->status,
+                'channel' => $verification->channel,
+            ]);
 
             return response()->json(['success' => true]);
         } catch (\Throwable $e) {
-            Log::warning('Twilio WhatsApp send failed', [
+            Log::warning('Twilio Verify send failed', [
                 'phone' => $phone,
                 'error' => $e->getMessage(),
             ]);
@@ -77,7 +83,7 @@ class VerifyController extends Controller
     }
 
     /**
-     * Step 2 — verify OTP code.
+     * Step 2 — check the user-supplied code against Twilio Verify.
      */
     public function check(Request $request)
     {
@@ -86,11 +92,10 @@ class VerifyController extends Controller
         ]);
 
         $phone     = $request->session()->get('otp_phone');
-        $stored    = $request->session()->get('otp_code');
         $expiresAt = $request->session()->get('otp_expires_at');
         $attempts  = (int) $request->session()->get('otp_attempts', 0);
 
-        if (!$phone || !$stored) {
+        if (!$phone) {
             return response()->json([
                 'success' => false,
                 'message' => 'Session expirée. Veuillez renvoyer le code.',
@@ -98,7 +103,7 @@ class VerifyController extends Controller
         }
 
         if ($attempts >= self::MAX_ATTEMPTS) {
-            $request->session()->forget(['otp_phone', 'otp_code', 'otp_expires_at', 'otp_attempts']);
+            $request->session()->forget(['otp_phone', 'otp_expires_at', 'otp_attempts']);
             return response()->json([
                 'success' => false,
                 'message' => 'Trop de tentatives. Veuillez renvoyer un nouveau code.',
@@ -106,37 +111,78 @@ class VerifyController extends Controller
         }
 
         if ($expiresAt && now()->timestamp > (int) $expiresAt) {
-            $request->session()->forget(['otp_phone', 'otp_code', 'otp_expires_at', 'otp_attempts']);
+            $request->session()->forget(['otp_phone', 'otp_expires_at', 'otp_attempts']);
             return response()->json([
                 'success' => false,
                 'message' => 'Code expiré. Veuillez renvoyer le code.',
             ], 422);
         }
 
-        $expected = $this->isDevMode() ? '123456' : (string) $stored;
-
-        if (!hash_equals($expected, (string) $request->input('code'))) {
+        // Dev mode: any 6-digit value works as long as it equals 123456.
+        if ($this->isDevMode()) {
+            if ($request->input('code') === '123456') {
+                $this->markVerified($request, $phone);
+                return response()->json(['success' => true]);
+            }
             $request->session()->put('otp_attempts', $attempts + 1);
-            $remaining = max(0, self::MAX_ATTEMPTS - ($attempts + 1));
-            $msg = $this->isDevMode()
-                ? '[Mode local] Code incorrect — utilisez 123456.'
-                : 'Code incorrect. Veuillez réessayer.';
             return response()->json([
-                'success'              => false,
-                'message'              => $msg,
-                'attempts_remaining'   => $remaining,
+                'success' => false,
+                'message' => '[Mode local] Code incorrect — utilisez 123456.',
+                'attempts_remaining' => max(0, self::MAX_ATTEMPTS - ($attempts + 1)),
             ], 422);
         }
 
-        // Success: rotate the session ID to mitigate fixation, then mark verified.
-        $request->session()->forget(['otp_phone', 'otp_code', 'otp_expires_at', 'otp_attempts']);
+        try {
+            $check = $this->twilio()
+                ->verify->v2
+                ->services($this->verifyServiceSid())
+                ->verificationChecks
+                ->create([
+                    'to'   => $phone,
+                    'code' => (string) $request->input('code'),
+                ]);
+        } catch (\Throwable $e) {
+            // Twilio returns 404 once the verification has expired or already approved/canceled.
+            $msg = strtolower($e->getMessage());
+            if (str_contains($msg, 'not found') || str_contains($msg, 'expired')) {
+                $request->session()->forget(['otp_phone', 'otp_expires_at', 'otp_attempts']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Code expiré ou invalide. Veuillez renvoyer le code.',
+                ], 422);
+            }
+            Log::warning('Twilio Verify check failed', [
+                'phone' => $phone,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur de vérification. Veuillez réessayer.',
+            ], 422);
+        }
+
+        if ($check->status === 'approved') {
+            $this->markVerified($request, $phone);
+            return response()->json(['success' => true]);
+        }
+
+        $request->session()->put('otp_attempts', $attempts + 1);
+        $remaining = max(0, self::MAX_ATTEMPTS - ($attempts + 1));
+        return response()->json([
+            'success'              => false,
+            'message'              => 'Code incorrect. Veuillez réessayer.',
+            'attempts_remaining'   => $remaining,
+        ], 422);
+    }
+
+    private function markVerified(Request $request, string $phone): void
+    {
+        $request->session()->forget(['otp_phone', 'otp_expires_at', 'otp_attempts']);
         $request->session()->regenerate();
         $request->session()->put([
             'phone_verified' => true,
             'verified_phone' => $phone,
         ]);
-
-        return response()->json(['success' => true]);
     }
 
     /**

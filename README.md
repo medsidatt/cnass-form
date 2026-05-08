@@ -11,7 +11,8 @@ Built on Laravel 13 (PHP ≥ 8.3).
 
 ## Features
 
-- **WhatsApp OTP authentication** (Twilio Messages API).
+- **WhatsApp OTP authentication** via Twilio Verify (Twilio generates and
+  delivers the code through a managed verification service).
 - **Multi-step submission form** with employee, parents, spouse, siblings, and
   descendants — including ID/photo file uploads.
 - **Resubmission flow**: a verified phone re-opens its existing record for
@@ -52,8 +53,8 @@ Without Twilio credentials the OTP step runs in **dev mode** — any phone is
 accepted and the verification code is hard-coded to `123456`.
 
 To exercise the real WhatsApp flow locally, set `TWILIO_SID`,
-`TWILIO_AUTH_TOKEN` and `TWILIO_WHATSAPP_FROM` (the Twilio sandbox sender
-`whatsapp:+14155238886` works once you join the sandbox from the test handset).
+`TWILIO_AUTH_TOKEN` and `TWILIO_VERIFY_SID` to a Twilio Verify service that
+has the WhatsApp channel enabled in the Twilio Console.
 
 ---
 
@@ -171,16 +172,19 @@ config cache is valid.
 Visit `/admin`. The password is whatever you set in `ADMIN_PASSWORD`. Use the
 **Déconnexion** button on the dashboard to end the session.
 
-### Twilio: sandbox vs. production
+### Twilio Verify
 
-- **Sandbox** (`whatsapp:+14155238886`): only delivers to phones that have
-  joined your sandbox by sending the join code. Fine for QA, **not** for real
-  users.
-- **Production**: register and verify a WhatsApp Business sender in the Twilio
-  Console, then set `TWILIO_WHATSAPP_FROM=whatsapp:+222XXXXXXXX`.
+- The app uses Twilio Verify — Twilio generates the code and tracks the
+  verification lifecycle. We only call `verifications->create()` (send) and
+  `verificationChecks->create()` (check).
+- The WhatsApp channel must be enabled on the Verify service in the Twilio
+  Console (Verify → Services → your service → Channels).
+- For testing without a production WhatsApp sender, Twilio Verify can also
+  fall back to SMS or use Twilio's verified test recipients.
 
-If `TWILIO_SID` or `TWILIO_AUTH_TOKEN` is empty the application falls back to
-dev mode (`123456` accepted as the OTP) — never deploy with empty credentials.
+If `TWILIO_SID`, `TWILIO_AUTH_TOKEN`, or `TWILIO_VERIFY_SID` is empty the
+application falls back to dev mode (`123456` accepted as the OTP) — never
+deploy with empty credentials.
 
 ### Rate limits
 
@@ -221,7 +225,8 @@ production `.env` and run `php artisan config:cache`.
 - [ ] HTTPS enforced; `SESSION_SECURE_COOKIE=true`.
 - [ ] `APP_KEY` generated (`php artisan key:generate --force`).
 - [ ] `ADMIN_PASSWORD` set to a strong random string.
-- [ ] Real Twilio credentials and a non-sandbox `TWILIO_WHATSAPP_FROM`.
+- [ ] Real Twilio credentials and a `TWILIO_VERIFY_SID` whose WhatsApp
+      channel is enabled and approved.
 - [ ] No `public/storage` symlink in production.
 - [ ] Daily database + uploads backup scheduled.
 - [ ] Server hardened (firewall, automatic security updates).
