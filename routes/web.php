@@ -32,7 +32,8 @@ Route::get('/files/{submission}/{key}', [SubmissionController::class, 'serveFile
 Route::redirect('/admin', '/');
 
 // Admin dashboard lives at the root domain (gated by ADMIN_PASSWORD).
-Route::get('/', [SubmissionController::class, 'index'])
+// Accept POST too so the AdminAuth middleware can process the login form.
+Route::match(['get', 'post'], '/', [SubmissionController::class, 'index'])
     ->middleware('admin')
     ->name('admin.index');
 
