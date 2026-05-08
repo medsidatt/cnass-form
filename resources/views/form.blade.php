@@ -136,9 +136,18 @@
         .alert-error { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
 
         /* Download / success panel */
-        .success-card { text-align: center; padding: 20px 0; }
-        .success-card .icon { font-size: 3.5rem; margin-bottom: 14px; }
-        .success-card h2 { font-size: 1.3rem; color: #16a34a; margin-bottom: 6px; }
+        .success-card { text-align: center; padding: 24px 0; }
+        .success-icon {
+            width: 72px; height: 72px;
+            margin: 0 auto 18px;
+            border-radius: 50%;
+            background: #16a34a;
+            color: #fff;
+            font-size: 2.4rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 16px rgba(22,163,74,.25);
+        }
+        .success-card h2 { font-size: 1.35rem; color: #16a34a; margin-bottom: 6px; }
         .success-card p  { color: #64748b; font-size: .88rem; margin-bottom: 28px; }
         .success-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
         .btn-dl { background: #1a3a6e; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 700; font-size: .92rem; }
@@ -408,9 +417,10 @@
             <div class="steps">
                 <div class="step done"><div class="num">✓</div>Vérification</div>
                 <div class="step done"><div class="num">✓</div>Formulaire</div>
-                <div class="step active"><div class="num">3</div>Confirmation</div>
+                <div class="step done"><div class="num">✓</div>Confirmation</div>
             </div>
             <div class="success-card">
+                <div class="success-icon">✓</div>
                 <h2 id="success-title">Fiche enregistrée</h2>
                 <p id="success-name" style="margin-bottom:24px"></p>
                 <div class="success-actions">
