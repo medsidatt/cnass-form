@@ -65,8 +65,9 @@
             border: 1px dashed #cbd5e1; border-radius: 7px; padding: 7px 10px;
             font-size: .82rem; width: 100%; cursor: pointer; background: #f8fafc;
         }
-        .file-existing { font-size: .74rem; color: #64748b; margin-top: 3px; display: flex; align-items: center; gap: 5px; }
-        .file-existing a { color: #1a3a6e; text-decoration: underline; }
+        .file-existing { display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; font-size: .76rem; color: #15803d; font-weight: 600; }
+        .file-existing::before { content: "✓"; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background: #15803d; color: #fff; border-radius: 50%; font-size: .7rem; flex-shrink: 0; }
+        .file-existing a { color: #15803d; text-decoration: underline; }
 
         /* Required-field marker */
         .req { color: #dc2626; font-weight: 700; margin-left: 2px; }
