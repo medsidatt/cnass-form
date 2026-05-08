@@ -68,6 +68,14 @@
         .file-existing { font-size: .74rem; color: #64748b; margin-top: 3px; display: flex; align-items: center; gap: 5px; }
         .file-existing a { color: #1a3a6e; text-decoration: underline; }
 
+        /* Required-field marker */
+        .req { color: #dc2626; font-weight: 700; margin-left: 2px; }
+
+        /* File upload "OK" indicator (set by JS once a file is chosen) */
+        .file-ok { display: none; margin-top: 5px; font-size: .76rem; color: #15803d; font-weight: 600; align-items: center; gap: 5px; }
+        .file-ok.visible { display: inline-flex; }
+        .file-ok::before { content: "✓"; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background: #15803d; color: #fff; border-radius: 50%; font-size: .7rem; }
+
         /* Member cards */
         .member-card { border: 1px solid #e2e8f0; border-radius: 9px; padding: 20px; margin-bottom: 14px; position: relative; background: #f8fafc; }
         .card-label  { font-size: .72rem; font-weight: 700; color: #1a3a6e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
@@ -472,12 +480,12 @@
                     <div class="section-title"><span>1</span> Informations de l'employé</div>
                     <div class="grid-2">
                         <div class="field span-2">
-                            <label>Nom complet *</label>
+                            <label>Nom complet<span class="req">*</span></label>
                             <input type="text" name="nom_complet" required placeholder="Prénom et Nom"
                                    value="{{ $existing->nom_complet ?? '' }}">
                         </div>
                         <div class="field">
-                            <label>Situation familiale *</label>
+                            <label>Situation familiale<span class="req">*</span></label>
                             <select name="situation_familiale" id="situation_familiale" required>
                                 <option value="">— Sélectionner —</option>
                                 @foreach(['célibataire'=>'Célibataire','marié(e)'=>'Marié(e)','divorcé(e)'=>'Divorcé(e)','veuf/veuve'=>'Veuf / Veuve'] as $val=>$lbl)
@@ -946,6 +954,26 @@ function showErr(id, msg) { const el = document.getElementById(id); el.textConte
 function escapeAttr(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// ── File-picker confirmation: show "✓ filename" once a file is chosen ────────
+document.addEventListener('change', function (e) {
+    const input = e.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== 'file') return;
+    if (!input.closest('#cnass-form')) return;
+    let ok = input.parentElement.querySelector(':scope > .file-ok');
+    if (!ok) {
+        ok = document.createElement('div');
+        ok.className = 'file-ok';
+        input.insertAdjacentElement('afterend', ok);
+    }
+    if (input.files && input.files[0]) {
+        ok.textContent = input.files[0].name;
+        ok.classList.add('visible');
+    } else {
+        ok.textContent = '';
+        ok.classList.remove('visible');
+    }
+});
 
 // ── Init: if server already verified, pre-fill dynamic sections ───────────────
 document.addEventListener('DOMContentLoaded', () => {
