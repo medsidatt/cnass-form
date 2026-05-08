@@ -195,7 +195,7 @@
         .btn-modify:hover { background: #f1f5f9; }
 
         .hidden { display: none !important; }
-        #conjoint-section { display: none; }
+        #conjoint-section, #descendants-section { display: none; }
 
         @media (max-width: 640px) {
             .body { padding: 24px; }
@@ -590,7 +590,7 @@
                 </div>
 
                 {{-- ── Descendants ── --}}
-                <div class="section">
+                <div class="section" id="descendants-section">
                     <div class="section-title"><span>5</span> Descendants</div>
                     <input type="hidden" name="descendants_count" id="descendants_count" value="0">
                     <div id="descendants-container"></div>
@@ -645,11 +645,28 @@ const CSRF       = '{{ csrf_token() }}';
 let IS_UPDATE    = {{ $existing ? 'true' : 'false' }};
 
 // ── Situation familiale ──────────────────────────────────────────────────────
-function toggleConjoint() {
-    const val = document.getElementById('situation_familiale').value;
-    document.getElementById('conjoint-section').style.display = val === 'marié(e)' ? 'block' : 'none';
+// célibataire   → no spouse, no descendants
+// marié(e)      → spouse + descendants
+// divorcé(e)    → no spouse, may have descendants
+// veuf/veuve    → no spouse, may have descendants
+function toggleSituationSections() {
+    const val           = document.getElementById('situation_familiale').value;
+    const showConjoint  = val === 'marié(e)';
+    const showDescendants = val !== '' && val !== 'célibataire';
+    setSectionVisible('conjoint-section',    showConjoint);
+    setSectionVisible('descendants-section', showDescendants);
 }
-document.getElementById('situation_familiale').addEventListener('change', toggleConjoint);
+function setSectionVisible(id, visible) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = visible ? 'block' : 'none';
+    // Disable inputs inside hidden sections so they are excluded from
+    // the submitted FormData. Re-enable when shown again.
+    el.querySelectorAll('input, select, textarea, button').forEach(node => {
+        node.disabled = !visible;
+    });
+}
+document.getElementById('situation_familiale').addEventListener('change', toggleSituationSections);
 
 // ── WhatsApp OTP ─────────────────────────────────────────────────────────────
 const OTP_TTL_SECONDS    = 15 * 60;   // matches VerifyController::OTP_TTL_MINUTES
@@ -978,7 +995,7 @@ document.addEventListener('change', function (e) {
 // ── Init: if server already verified, pre-fill dynamic sections ───────────────
 document.addEventListener('DOMContentLoaded', () => {
     prefillDynamic();
-    toggleConjoint();
+    toggleSituationSections();
 
     // Show "saved" banner once after a successful save, then strip the
     // ?saved=1 from the URL so refreshing won't show it again.
