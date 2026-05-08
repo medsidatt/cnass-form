@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin – Soumissions CNASS</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: Arial, sans-serif; background: #f4f6f9; color: #333; }
@@ -55,7 +54,7 @@
 <div class="topbar">
     <div style="display:flex;align-items:center;gap:14px">
         <div style="width:36px;height:36px;background:#fff;border-radius:8px;padding:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <img src="{{ asset('favicon.svg') }}" alt="" style="width:100%;height:100%">
+            <img src="{{ asset('logo.png') }}" alt="" style="width:100%;height:100%">
         </div>
         <h1>Tableau de bord – Soumissions CNASS</h1>
     </div>

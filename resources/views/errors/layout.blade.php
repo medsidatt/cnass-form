@@ -4,8 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>{{ $title ?? 'Erreur' }} — {{ config('app.name') }}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Segoe UI',Arial,sans-serif;background:#eef1f6;color:#1e293b;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
