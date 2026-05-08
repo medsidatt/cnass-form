@@ -20,13 +20,22 @@
         .body { padding: 40px; }
 
         /* Steps */
-        .steps { display: flex; margin-bottom: 36px; }
-        .step  { flex: 1; text-align: center; padding: 10px 4px 12px; font-size: .72rem; font-weight: 700; color: #94a3b8; border-bottom: 3px solid #e2e8f0; text-transform: uppercase; letter-spacing: .05em; }
-        .step .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; color: #64748b; font-size: .78rem; font-weight: 700; margin-bottom: 5px; }
+        .steps { display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 36px; }
+        .step  { text-align: center; padding: 10px 4px 12px; font-size: .72rem; font-weight: 700; color: #94a3b8; border-bottom: 3px solid #e2e8f0; text-transform: uppercase; letter-spacing: .05em; min-width: 0; }
+        .step .num { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; color: #64748b; font-size: .78rem; font-weight: 700; margin: 0 auto 6px; }
+        .step .step-label { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .step.active { color: #1a3a6e; border-bottom-color: #1a3a6e; }
         .step.active .num { background: #1a3a6e; color: #fff; }
         .step.done   { color: #16a34a; border-bottom-color: #16a34a; }
         .step.done   .num { background: #16a34a; color: #fff; }
+        @media (max-width: 480px) {
+            .step { font-size: .58rem; letter-spacing: .02em; padding: 8px 2px 10px; }
+            .step .num { width: 22px; height: 22px; font-size: .7rem; }
+        }
+        @media (max-width: 360px) {
+            .step .step-label { display: none; }
+            .step { padding-bottom: 12px; }
+        }
 
         /* OTP panel */
         .otp-wrap { max-width: 440px; margin: 0 auto; }
@@ -200,9 +209,9 @@
         ══════════════════════════════════════════ --}}
         <div id="panel-verify" class="{{ $phoneVerified ? 'hidden' : '' }}">
             <div class="steps">
-                <div class="step active"><div class="num">1</div>Vérification</div>
-                <div class="step"><div class="num">2</div>Formulaire</div>
-                <div class="step"><div class="num">3</div>Confirmation</div>
+                <div class="step active"><div class="num">1</div><span class="step-label">Vérification</span></div>
+                <div class="step"><div class="num">2</div><span class="step-label">Formulaire</span></div>
+                <div class="step"><div class="num">3</div><span class="step-label">Confirmation</span></div>
             </div>
 
             <div class="otp-wrap">
@@ -272,9 +281,9 @@
         <div id="panel-view" class="{{ $showView ? '' : 'hidden' }}">
             @if($existing)
             <div class="steps">
-                <div class="step done"><div class="num">✓</div>Vérification</div>
-                <div class="step done"><div class="num">✓</div>Formulaire</div>
-                <div class="step done"><div class="num">✓</div>Confirmation</div>
+                <div class="step done"><div class="num">✓</div><span class="step-label">Vérification</span></div>
+                <div class="step done"><div class="num">✓</div><span class="step-label">Formulaire</span></div>
+                <div class="step done"><div class="num">✓</div><span class="step-label">Confirmation</span></div>
             </div>
 
             <div id="saved-banner" class="alert alert-success hidden">
@@ -433,9 +442,9 @@
         <div id="panel-form" class="{{ $phoneVerified && !$existing ? '' : 'hidden' }}">
 
             <div class="steps">
-                <div class="step done"><div class="num">✓</div>Vérification</div>
-                <div class="step active"><div class="num">2</div>Formulaire</div>
-                <div class="step"><div class="num">3</div>Confirmation</div>
+                <div class="step done"><div class="num">✓</div><span class="step-label">Vérification</span></div>
+                <div class="step active"><div class="num">2</div><span class="step-label">Formulaire</span></div>
+                <div class="step"><div class="num">3</div><span class="step-label">Confirmation</span></div>
             </div>
 
             {{-- Existing submission banner --}}
