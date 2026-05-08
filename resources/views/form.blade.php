@@ -44,7 +44,10 @@
         /* Form sections */
         .section { margin-bottom: 32px; }
         .section-title { font-size: .9rem; font-weight: 700; color: #1a3a6e; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-        .section-title span { background: #1a3a6e; color: #fff; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: .75rem; flex-shrink: 0; }
+        .section-title > span { background: #1a3a6e; color: #fff; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: .75rem; flex-shrink: 0; }
+        .section-ok { display: none; margin-left: auto; background: #15803d; color: #fff; border-radius: 999px; padding: 4px 11px; font-size: .68rem; font-weight: 700; align-items: center; gap: 5px; text-transform: uppercase; letter-spacing: .04em; }
+        .section-ok.visible { display: inline-flex; }
+        .section-ok::before { content: "✓"; }
 
         /* Grid */
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -478,7 +481,7 @@
 
                 {{-- ── Employé ── --}}
                 <div class="section">
-                    <div class="section-title"><span>1</span> Informations de l'employé</div>
+                    <div class="section-title"><span>1</span> Informations de l'employé <span class="section-ok" data-section="employe">Complète</span></div>
                     <div class="grid-2">
                         <div class="field span-2">
                             <label>Nom complet<span class="req">*</span></label>
@@ -514,7 +517,7 @@
 
                 {{-- ── Père ── --}}
                 <div class="section">
-                    <div class="section-title"><span>2</span> Père</div>
+                    <div class="section-title"><span>2</span> Père <span class="section-ok" data-section="pere">Complète</span></div>
                     <div class="grid-2">
                         <div class="field span-2">
                             <label>Nom complet</label>
@@ -540,7 +543,7 @@
 
                 {{-- ── Mère ── --}}
                 <div class="section">
-                    <div class="section-title"><span>3</span> Mère</div>
+                    <div class="section-title"><span>3</span> Mère <span class="section-ok" data-section="mere">Complète</span></div>
                     <div class="grid-2">
                         <div class="field span-2">
                             <label>Nom complet</label>
@@ -566,7 +569,7 @@
 
                 {{-- ── Conjoint(e) ── --}}
                 <div class="section" id="conjoint-section">
-                    <div class="section-title"><span>4</span> Conjoint(e)</div>
+                    <div class="section-title"><span>4</span> Conjoint(e) <span class="section-ok" data-section="conjoint">Complète</span></div>
                     <div class="grid-2">
                         <div class="field span-2">
                             <label>Nom complet</label>
@@ -592,7 +595,7 @@
 
                 {{-- ── Descendants ── --}}
                 <div class="section" id="descendants-section">
-                    <div class="section-title"><span>5</span> Descendants</div>
+                    <div class="section-title"><span>5</span> Descendants <span class="section-ok" data-section="descendants">Complète</span></div>
                     <input type="hidden" name="descendants_count" id="descendants_count" value="0">
                     <div id="descendants-container"></div>
                     <button type="button" class="add-btn" onclick="addDescendant()">+ Ajouter un descendant</button>
@@ -600,7 +603,7 @@
 
                 {{-- ── Fratrie ── --}}
                 <div class="section">
-                    <div class="section-title"><span>6</span> Fratrie (Frères &amp; Sœurs)</div>
+                    <div class="section-title"><span>6</span> Fratrie (Frères &amp; Sœurs) <span class="section-ok" data-section="fratrie">Complète</span></div>
                     <input type="hidden" name="fratrie_count" id="fratrie_count" value="0">
                     <div id="fratrie-container"></div>
                     <button type="button" class="add-btn" onclick="addFratrie()">+ Ajouter un(e) frère / sœur</button>
@@ -901,6 +904,7 @@ function removeMember(id, counterId, containerId) {
     document.getElementById(id)?.remove();
     document.getElementById(counterId).value =
         document.getElementById(containerId).querySelectorAll('.member-card').length;
+    evaluateSections();
 }
 
 // ── Pre-fill dynamic sections from server data ────────────────────────────────
@@ -991,12 +995,55 @@ document.addEventListener('change', function (e) {
         ok.textContent = '';
         ok.classList.remove('visible');
     }
+    evaluateSections();
 });
+
+// ── Section completeness — light up the green "Complète" pill ────────────────
+function fileFilledByName(name) {
+    const input = document.querySelector('#cnass-form [name="' + CSS.escape(name) + '"]');
+    if (!input) return false;
+    if (input.files && input.files[0]) return true;
+    return !!input.parentElement?.querySelector('.file-existing');
+}
+function textFilledByName(name) {
+    const input = document.querySelector('#cnass-form [name="' + CSS.escape(name) + '"]');
+    return !!(input && String(input.value || '').trim());
+}
+function dynamicSectionComplete(prefix, countId) {
+    const count = parseInt(document.getElementById(countId)?.value || '0', 10);
+    if (count <= 0) return false;
+    for (let i = 0; i < count; i++) {
+        if (!textFilledByName(`${prefix}_nom_${i}`))   return false;
+        if (!fileFilledByName(`${prefix}_ci_${i}`))    return false;
+        if (!fileFilledByName(`${prefix}_photo_${i}`)) return false;
+    }
+    return true;
+}
+function evaluateSections() {
+    const status = {
+        employe:    textFilledByName('nom_complet') && textFilledByName('situation_familiale')
+                    && fileFilledByName('ci_employe') && fileFilledByName('photo_employe'),
+        pere:       textFilledByName('nom_pere') && fileFilledByName('ci_pere') && fileFilledByName('photo_pere'),
+        mere:       textFilledByName('nom_mere') && fileFilledByName('ci_mere') && fileFilledByName('photo_mere'),
+        conjoint:   textFilledByName('nom_conjoint') && fileFilledByName('ci_conjoint') && fileFilledByName('photo_conjoint'),
+        descendants: dynamicSectionComplete('descendant', 'descendants_count'),
+        fratrie:    dynamicSectionComplete('fratrie',     'fratrie_count'),
+    };
+    Object.entries(status).forEach(([key, ok]) => {
+        document.querySelectorAll('.section-ok[data-section="' + key + '"]').forEach(el => {
+            el.classList.toggle('visible', ok);
+        });
+    });
+}
+// Re-evaluate on any input/change inside the form.
+document.getElementById('cnass-form').addEventListener('input',  evaluateSections);
+document.getElementById('cnass-form').addEventListener('change', evaluateSections);
 
 // ── Init: if server already verified, pre-fill dynamic sections ───────────────
 document.addEventListener('DOMContentLoaded', () => {
     prefillDynamic();
     toggleSituationSections();
+    evaluateSections();
 
     // Show "saved" banner once after a successful save, then strip the
     // ?saved=1 from the URL so refreshing won't show it again.
