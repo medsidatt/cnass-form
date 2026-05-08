@@ -4,14 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fiche CNASS – Situation Familiale</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef1f6; color: #1e293b; min-height: 100vh; }
 
         .container { max-width: 880px; margin: 36px auto 64px; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.08); overflow: hidden; }
 
-        header { background: #1a3a6e; color: #fff; padding: 28px 40px; display: flex; align-items: center; gap: 16px; }
-        header .logo { display: none; }
+        header { background: #1a3a6e; color: #fff; padding: 28px 40px; display: flex; align-items: center; gap: 18px; }
+        header .logo { width: 46px; height: 46px; flex-shrink: 0; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 5px; }
+        header .logo img { width: 100%; height: 100%; }
         header h1  { font-size: 1.2rem; font-weight: 700; }
         header p   { font-size: .78rem; opacity: .7; margin-top: 3px; }
 
@@ -158,7 +161,7 @@
 <body>
 <div class="container">
     <header>
-        <div class="logo">🏢</div>
+        <div class="logo"><img src="{{ asset('favicon.svg') }}" alt="AMC Travaux"></div>
         <div>
             <h1>Fiche de Situation Familiale</h1>
             <p>Caisse Nationale des Assurances Sociales des Salariés – CNASS</p>

@@ -37,9 +37,11 @@ class AdminAuth
 
     private function loginPage(?string $error = null): string
     {
-        $csrf  = csrf_token();
-        $err   = $error ? '<div class="err">' . e($error) . '</div>' : '';
-        $title = e(config('app.name', 'CNASS')) . ' — Accès Admin';
+        $csrf    = csrf_token();
+        $err     = $error ? '<div class="err">' . e($error) . '</div>' : '';
+        $title   = e(config('app.name', 'CNASS')) . ' — Accès Admin';
+        $icon    = e(asset('favicon.svg'));
+        $iconAlt = e(asset('favicon.ico'));
 
         return <<<HTML
 <!doctype html>
@@ -48,6 +50,8 @@ class AdminAuth
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{$title}</title>
+<link rel="icon" type="image/svg+xml" href="{$icon}">
+<link rel="alternate icon" href="{$iconAlt}">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#eef1f6;color:#1e293b;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -64,6 +68,9 @@ button:hover{background:#14316a}
 </head>
 <body>
 <div class="card">
+<div style="margin:0 auto 14px;width:56px;height:56px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:6px">
+<img src="{$icon}" alt="" style="width:100%;height:100%">
+</div>
 <h1>Accès administrateur</h1>
 <p class="lead">Cette zone est réservée. Veuillez saisir le mot de passe administrateur.</p>
 {$err}

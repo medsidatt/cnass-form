@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Hard hat -->
+  <path d="M16 22h32v3H16z" fill="#d92020"/>
+  <path d="M32 7c-8 0-15 5.5-15 13v3h30v-3c0-7.5-7-13-15-13z" fill="#d92020"/>
+  <path d="M30 9h4v4h-4z" fill="#d92020"/>
+
+  <!-- Face / head -->
+  <ellipse cx="32" cy="28" rx="6.5" ry="5.5" fill="#d92020"/>
+
+  <!-- Torso (high-vis vest cut) -->
+  <path d="M22 34h20l3 22H19z" fill="#d92020"/>
+  <path d="M30 34h4v22h-4z" fill="#fff" opacity=".18"/>
+
+  <!-- Right arm holding a tool -->
+  <path d="M42 36l8 6-2 4-7-4z" fill="#d92020"/>
+
+  <!-- Tool body -->
+  <rect x="46" y="38" width="6" height="11" rx="1.5" fill="#d92020"/>
+  <rect x="47.5" y="49" width="3" height="3" fill="#d92020"/>
+
+  <!-- Coiled cable -->
+  <path d="M51 41c4 0 4 3 0 3s-4 3 0 3 4 3 0 3-4 3 0 3"
+        stroke="#d92020" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+
+  <!-- Left arm -->
+  <path d="M22 36l-4 8 3 2 4-6z" fill="#d92020"/>
+
+  <!-- Legs -->
+  <path d="M22 56h7l-1 3h-7z" fill="#d92020"/>
+  <path d="M35 56h7l1 3h-8z" fill="#d92020"/>
+</svg>
