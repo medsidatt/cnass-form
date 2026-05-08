@@ -210,7 +210,7 @@
                         <div class="otp-info-row" id="otp-expiry">
                             <span class="otp-info-icon" aria-hidden="true">⏱️</span>
                             <div>
-                                <div class="otp-info-label">Expire dans</div>
+                                <div class="otp-info-label">Validité</div>
                                 <div class="otp-info-value" id="otp-expiry-time">15:00</div>
                             </div>
                         </div>
