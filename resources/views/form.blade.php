@@ -134,6 +134,23 @@
         /* Alerts */
         .alert { padding: 12px 16px; border-radius: 7px; margin-bottom: 16px; font-size: .84rem; }
         .alert-error { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+        .alert-success { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+
+        /* View panel (read-only employee info) */
+        .view-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; padding-bottom: 18px; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; }
+        .view-header h2 { font-size: 1.25rem; color: #1a3a6e; margin-bottom: 4px; }
+        .view-header p  { font-size: .78rem; color: #94a3b8; }
+        .view-section { margin-bottom: 26px; }
+        .view-section h3 { font-size: .82rem; font-weight: 700; color: #1a3a6e; text-transform: uppercase; letter-spacing: .05em; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 14px; }
+        .view-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+        .view-field label { font-size: .7rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; display: block; margin-bottom: 3px; }
+        .view-field > div { font-size: .9rem; color: #1e293b; }
+        .view-file { display: inline-block; font-size: .82rem; color: #1a3a6e; text-decoration: none; background: #f0f4ff; border: 1px solid #bfdbfe; padding: 5px 12px; border-radius: 6px; font-weight: 600; }
+        .view-file:hover { background: #dbeafe; }
+        .view-empty { font-size: .82rem; color: #94a3b8; font-style: italic; }
+        .view-subcard { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 7px; padding: 14px 16px; margin-bottom: 10px; }
+        .view-subcard strong { font-size: .85rem; color: #1a3a6e; }
+        @media (max-width: 600px) { .view-grid { grid-template-columns: 1fr; } }
 
         /* Download / success panel */
         .success-card { text-align: center; padding: 24px 0; }
@@ -249,9 +266,171 @@
         </div>
 
         {{-- ══════════════════════════════════════════
-             PANEL 2 – Form
+             PANEL — VIEW MY INFO  (read-only landing for returning employees)
         ══════════════════════════════════════════ --}}
-        <div id="panel-form" class="{{ !$phoneVerified ? 'hidden' : '' }}">
+        @php $showView = $phoneVerified && $existing; @endphp
+        <div id="panel-view" class="{{ $showView ? '' : 'hidden' }}">
+            @if($existing)
+            <div class="steps">
+                <div class="step done"><div class="num">✓</div>Vérification</div>
+                <div class="step done"><div class="num">✓</div>Formulaire</div>
+                <div class="step done"><div class="num">✓</div>Confirmation</div>
+            </div>
+
+            <div id="saved-banner" class="alert alert-success hidden">
+                ✓ Vos informations ont bien été enregistrées.
+            </div>
+
+            <div class="view-header">
+                <div>
+                    <h2>{{ $existing->nom_complet }}</h2>
+                    <p>Dernière mise à jour : {{ $existing->updated_at->format('d/m/Y à H:i') }}</p>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="switchToForm()">Modifier ma fiche</button>
+            </div>
+
+            @php
+                $situations = [
+                    'célibataire' => 'Célibataire',
+                    'marié(e)'    => 'Marié(e)',
+                    'divorcé(e)'  => 'Divorcé(e)',
+                    'veuf/veuve'  => 'Veuf / Veuve',
+                ];
+                $fileLink = fn($key) => route('files.show', ['submission' => $existing, 'key' => $key]);
+            @endphp
+
+            {{-- Employé --}}
+            <div class="view-section">
+                <h3>Informations de l'employé</h3>
+                <div class="view-grid">
+                    <div class="view-field"><label>Nom complet</label><div>{{ $existing->nom_complet }}</div></div>
+                    <div class="view-field"><label>Téléphone</label><div>{{ $verifiedPhone }}</div></div>
+                    <div class="view-field"><label>Situation familiale</label><div>{{ $situations[$existing->situation_familiale] ?? $existing->situation_familiale }}</div></div>
+                    <div class="view-field"></div>
+                    <div class="view-field"><label>Carte d'identité</label>
+                        @if($existing->ci_employe)<a href="{{ $fileLink('ci_employe') }}" target="_blank" class="view-file">Voir le fichier</a>
+                        @else<span class="view-empty">Non renseigné</span>@endif
+                    </div>
+                    <div class="view-field"><label>Photo</label>
+                        @if($existing->photo_employe)<a href="{{ $fileLink('photo_employe') }}" target="_blank" class="view-file">Voir le fichier</a>
+                        @else<span class="view-empty">Non renseigné</span>@endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Père --}}
+            @if($existing->nom_pere || $existing->ci_pere || $existing->photo_pere)
+            <div class="view-section">
+                <h3>Père</h3>
+                <div class="view-grid">
+                    <div class="view-field" style="grid-column:span 2"><label>Nom complet</label><div>{{ $existing->nom_pere ?? '—' }}</div></div>
+                    <div class="view-field"><label>Carte d'identité</label>
+                        @if($existing->ci_pere)<a href="{{ $fileLink('ci_pere') }}" target="_blank" class="view-file">Voir le fichier</a>
+                        @else<span class="view-empty">Non renseigné</span>@endif
+                    </div>
+                    <div class="view-field"><label>Photo</label>
+                        @if($existing->photo_pere)<a href="{{ $fileLink('photo_pere') }}" target="_blank" class="view-file">Voir le fichier</a>
+                        @else<span class="view-empty">Non renseigné</span>@endif
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- Mère --}}
+            @if($existing->nom_mere || $existing->ci_mere || $existing->photo_mere)
+            <div class="view-section">
+                <h3>Mère</h3>
+                <div class="view-grid">
+                    <div class="view-field" style="grid-column:span 2"><label>Nom complet</label><div>{{ $existing->nom_mere ?? '—' }}</div></div>
+                    <div class="view-field"><label>Carte d'identité</label>
+                        @if($existing->ci_mere)<a href="{{ $fileLink('ci_mere') }}" target="_blank" class="view-file">Voir le fichier</a>
+                        @else<span class="view-empty">Non renseigné</span>@endif
+                    </div>
+                    <div class="view-field"><label>Photo</label>
+                        @if($existing->photo_mere)<a href="{{ $fileLink('photo_mere') }}" target="_blank" class="view-file">Voir le fichier</a>
+                        @else<span class="view-empty">Non renseigné</span>@endif
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- Conjoint --}}
+            @if($existing->nom_conjoint || $existing->ci_conjoint || $existing->photo_conjoint)
+            <div class="view-section">
+                <h3>Conjoint(e)</h3>
+                <div class="view-grid">
+                    <div class="view-field" style="grid-column:span 2"><label>Nom complet</label><div>{{ $existing->nom_conjoint ?? '—' }}</div></div>
+                    <div class="view-field"><label>Carte d'identité</label>
+                        @if($existing->ci_conjoint)<a href="{{ $fileLink('ci_conjoint') }}" target="_blank" class="view-file">Voir le fichier</a>
+                        @else<span class="view-empty">Non renseigné</span>@endif
+                    </div>
+                    <div class="view-field"><label>Photo</label>
+                        @if($existing->photo_conjoint)<a href="{{ $fileLink('photo_conjoint') }}" target="_blank" class="view-file">Voir le fichier</a>
+                        @else<span class="view-empty">Non renseigné</span>@endif
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- Descendants --}}
+            @if(!empty($existing->descendants))
+            <div class="view-section">
+                <h3>Descendants ({{ count($existing->descendants) }})</h3>
+                @foreach($existing->descendants as $i => $d)
+                <div class="view-subcard">
+                    <strong>Descendant {{ $i + 1 }}@if(!empty($d['nom'])) — {{ $d['nom'] }}@endif</strong>
+                    <div class="view-grid" style="margin-top:10px">
+                        <div class="view-field"><label>Carte d'identité</label>
+                            @if(!empty($d['ci']))<a href="{{ $fileLink('descendants.'.$i.'.ci') }}" target="_blank" class="view-file">Voir le fichier</a>
+                            @else<span class="view-empty">Non renseigné</span>@endif
+                        </div>
+                        <div class="view-field"><label>Photo</label>
+                            @if(!empty($d['photo']))<a href="{{ $fileLink('descendants.'.$i.'.photo') }}" target="_blank" class="view-file">Voir le fichier</a>
+                            @else<span class="view-empty">Non renseigné</span>@endif
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endif
+
+            {{-- Fratrie --}}
+            @php
+                $fratrie = collect($existing->freres ?? [])->map(fn($f, $i) => array_merge($f, ['_type'=>'Frère', '_key'=>'freres', '_idx'=>$i]))
+                    ->concat(collect($existing->soeurs ?? [])->map(fn($s, $i) => array_merge($s, ['_type'=>'Sœur', '_key'=>'soeurs', '_idx'=>$i])))
+                    ->values();
+            @endphp
+            @if($fratrie->isNotEmpty())
+            <div class="view-section">
+                <h3>Fratrie ({{ $fratrie->count() }})</h3>
+                @foreach($fratrie as $i => $m)
+                <div class="view-subcard">
+                    <strong>{{ $m['_type'] }} {{ $i + 1 }}@if(!empty($m['nom'])) — {{ $m['nom'] }}@endif</strong>
+                    <div class="view-grid" style="margin-top:10px">
+                        <div class="view-field"><label>Carte d'identité</label>
+                            @if(!empty($m['ci']))<a href="{{ $fileLink($m['_key'].'.'.$m['_idx'].'.ci') }}" target="_blank" class="view-file">Voir le fichier</a>
+                            @else<span class="view-empty">Non renseigné</span>@endif
+                        </div>
+                        <div class="view-field"><label>Photo</label>
+                            @if(!empty($m['photo']))<a href="{{ $fileLink($m['_key'].'.'.$m['_idx'].'.photo') }}" target="_blank" class="view-file">Voir le fichier</a>
+                            @else<span class="view-empty">Non renseigné</span>@endif
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endif
+
+            <button type="button" class="btn btn-primary btn-green full" onclick="switchToForm()" style="margin-top:14px">
+                Modifier ma fiche
+            </button>
+            @endif
+        </div>
+
+        {{-- ══════════════════════════════════════════
+             PANEL — Form
+        ══════════════════════════════════════════ --}}
+        <div id="panel-form" class="{{ $phoneVerified && !$existing ? '' : 'hidden' }}">
 
             <div class="steps">
                 <div class="step done"><div class="num">✓</div>Vérification</div>
@@ -410,24 +589,6 @@
             </form>
         </div>
 
-        {{-- ══════════════════════════════════════════
-             PANEL 3 – Confirmation / Download
-        ══════════════════════════════════════════ --}}
-        <div id="panel-download" class="hidden">
-            <div class="steps">
-                <div class="step done"><div class="num">✓</div>Vérification</div>
-                <div class="step done"><div class="num">✓</div>Formulaire</div>
-                <div class="step done"><div class="num">✓</div>Confirmation</div>
-            </div>
-            <div class="success-card">
-                <div class="success-icon">✓</div>
-                <h2 id="success-title">Fiche enregistrée</h2>
-                <p id="success-name" style="margin-bottom:24px"></p>
-                <div class="success-actions">
-                    <button type="button" class="btn-modify" onclick="showForm()">Modifier ma fiche</button>
-                </div>
-            </div>
-        </div>
 
     </div>
 </div>
@@ -458,7 +619,6 @@ window._prefill = {
 const SEND_URL   = '{{ route("verify.send") }}';
 const CHECK_URL  = '{{ route("verify.check") }}';
 const SUBMIT_URL = '{{ route("submit") }}';
-const DL_BASE    = '{{ url("/download") }}';
 const CSRF       = '{{ csrf_token() }}';
 let IS_UPDATE    = {{ $existing ? 'true' : 'false' }};
 
@@ -732,18 +892,9 @@ document.getElementById('cnass-form').addEventListener('submit', async function 
         const res  = await fetch(SUBMIT_URL, { method: 'POST', body: fd });
         const data = await res.json();
         if (data.success) {
-            const name = fd.get('nom_complet');
-            document.getElementById('success-title').textContent = data.updated ? 'Fiche mise à jour' : 'Fiche enregistrée';
-            document.getElementById('success-name').textContent  = name;
-            const dl = document.getElementById('dl-link');
-            if (dl) dl.href = DL_BASE + '/' + data.submission_id;
-            // From here on every save is an update.
-            IS_UPDATE = true;
-            // Reset the button to its idle state so a later "Modifier"
-            // doesn't drop the user back onto a stuck "Mise à jour…" button.
-            setSubmitIdle();
-            hideEl('panel-form');
-            showEl('panel-download');
+            // Reload so the page comes back with the freshly-saved data
+            // and lands on the read-only view panel.
+            window.location.href = '{{ route("form") }}?saved=1';
         } else {
             showErr('alert-form-error', data.message ?? 'Une erreur est survenue.');
             setSubmitIdle();
@@ -754,10 +905,11 @@ document.getElementById('cnass-form').addEventListener('submit', async function 
     }
 });
 
-function showForm() {
-    hideEl('panel-download');
+function switchToForm() {
+    hideEl('panel-view');
     showEl('panel-form');
     setSubmitIdle();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -785,6 +937,17 @@ function escapeAttr(s) {
 document.addEventListener('DOMContentLoaded', () => {
     prefillDynamic();
     toggleConjoint();
+
+    // Show "saved" banner once after a successful save, then strip the
+    // ?saved=1 from the URL so refreshing won't show it again.
+    if (new URLSearchParams(window.location.search).get('saved') === '1') {
+        const banner = document.getElementById('saved-banner');
+        if (banner) {
+            banner.classList.remove('hidden');
+            setTimeout(() => banner.classList.add('hidden'), 4500);
+        }
+        history.replaceState({}, '', '{{ route("form") }}');
+    }
 });
 </script>
 </body>
