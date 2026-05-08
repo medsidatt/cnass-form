@@ -40,6 +40,7 @@
         .btn-copy { background: #0ea5e9; color: #fff; border: none; border-radius: 7px; padding: 11px 22px; font-size: .85rem; font-weight: 700; cursor: pointer; transition: background .15s; white-space: nowrap; min-width: 130px; }
         .btn-copy:hover { background: #0284c7; }
         .btn-copy.copied { background: #16a34a; }
+        .flash-success { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; padding: 12px 16px; border-radius: 8px; font-size: .88rem; font-weight: 600; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -70,6 +71,10 @@
 </div>
 
 <div class="content">
+    @if(session('flash_success'))
+    <div class="flash-success">✓ {{ session('flash_success') }}</div>
+    @endif
+
     {{-- Shareable form link --}}
     <div class="share-card">
         <div class="share-card-left">

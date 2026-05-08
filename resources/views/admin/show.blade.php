@@ -13,8 +13,10 @@
         .topbar a.back { color: #fff; text-decoration: none; font-size: .85rem; opacity: .8; }
         .topbar a.back:hover { opacity: 1; }
         .topbar h1 { font-size: 1.1rem; }
-        .btn-dl-admin { background: #fff; color: #1a3a6e; text-decoration: none; padding: 7px 18px; border-radius: 5px; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+        .btn-dl-admin { background: #fff; color: #1a3a6e; text-decoration: none; padding: 7px 18px; border-radius: 5px; font-size: .82rem; font-weight: 700; white-space: nowrap; border: none; cursor: pointer; }
         .btn-dl-admin:hover { background: #f0f4ff; }
+        .btn-delete-admin { background: #dc2626; color: #fff; border: none; padding: 7px 18px; border-radius: 5px; font-size: .82rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .btn-delete-admin:hover { background: #b91c1c; }
         .content { padding: 32px; max-width: 900px; margin: 0 auto; }
         .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.08); margin-bottom: 24px; overflow: hidden; }
         .card-header { background: #1a3a6e; color: #fff; padding: 12px 20px; font-size: .95rem; font-weight: bold; }
@@ -41,7 +43,16 @@
         <a href="{{ route('admin.index') }}" class="back">← Retour</a>
         <h1>{{ $submission->nom_complet }} — #{{ $submission->id }}</h1>
     </div>
-    <a href="{{ route('admin.download', $submission) }}" class="btn-dl-admin">Télécharger la fiche Excel</a>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <a href="{{ route('admin.download', $submission) }}" class="btn-dl-admin">Télécharger Excel</a>
+        <form method="POST" action="{{ route('admin.destroy', $submission) }}"
+              onsubmit="return confirm('Supprimer définitivement la fiche de {{ addslashes($submission->nom_complet) }} et tous ses fichiers ? Cette action est irréversible.');"
+              style="display:inline">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn-delete-admin">Supprimer</button>
+        </form>
+    </div>
 </div>
 
 <div class="content">

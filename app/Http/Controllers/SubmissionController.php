@@ -268,6 +268,75 @@ class SubmissionController extends Controller
     }
 
     /**
+     * Delete a submission and every uploaded file that belongs to it.
+     */
+    public function destroy(Request $request, Submission $submission)
+    {
+        $folder = $this->submissionFolder($submission);
+
+        // Collect a defensive list of paths in case files live outside the
+        // computed folder for any reason (e.g. legacy records).
+        $paths = array_filter([
+            $submission->ci_employe,    $submission->photo_employe,
+            $submission->ci_pere,       $submission->photo_pere,
+            $submission->ci_mere,       $submission->photo_mere,
+            $submission->ci_conjoint,   $submission->photo_conjoint,
+        ]);
+        foreach (($submission->freres ?? []) as $f) {
+            $paths[] = $f['ci']    ?? null;
+            $paths[] = $f['photo'] ?? null;
+        }
+        foreach (($submission->soeurs ?? []) as $s) {
+            $paths[] = $s['ci']    ?? null;
+            $paths[] = $s['photo'] ?? null;
+        }
+        foreach (($submission->descendants ?? []) as $d) {
+            $paths[] = $d['ci']    ?? null;
+            $paths[] = $d['photo'] ?? null;
+        }
+        $paths = array_filter($paths);
+
+        $disk = Storage::disk(self::DISK);
+        foreach ($paths as $p) {
+            if ($disk->exists($p)) {
+                $disk->delete($p);
+            }
+        }
+        if ($folder && $disk->exists($folder)) {
+            $disk->deleteDirectory($folder);
+        }
+
+        $id = $submission->id;
+        $submission->delete();
+
+        Log::info('Submission deleted', [
+            'id'      => $id,
+            'folder'  => $folder,
+            'by_ip'   => $request->ip(),
+        ]);
+
+        return redirect()
+            ->route('admin.index')
+            ->with('flash_success', "Soumission #{$id} supprimée définitivement.");
+    }
+
+    /**
+     * Best-effort recovery of the upload folder path from any one stored file.
+     */
+    private function submissionFolder(Submission $submission): ?string
+    {
+        $anyPath = $submission->ci_employe
+                ?? $submission->photo_employe
+                ?? $submission->ci_pere
+                ?? $submission->photo_pere
+                ?? $submission->ci_mere
+                ?? $submission->photo_mere
+                ?? $submission->ci_conjoint
+                ?? $submission->photo_conjoint;
+        return $anyPath ? dirname($anyPath) : null;
+    }
+
+    /**
      * Map a "key" (e.g. "ci_employe", "fratrie.0.ci", "descendants.2.photo")
      * back to the stored file path on the submission.
      */

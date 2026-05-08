@@ -43,4 +43,5 @@ Route::prefix('admin')->middleware('admin')->name('admin.')->group(function () {
     Route::get('/export/excel',             [SubmissionController::class, 'exportExcel'])->name('exportExcel');
     Route::get('/{submission}/download',    [SubmissionController::class, 'adminDownload'])->name('download');
     Route::get('/{submission}',             [SubmissionController::class, 'show'])->name('show');
+    Route::delete('/{submission}',          [SubmissionController::class, 'destroy'])->name('destroy');
 });
