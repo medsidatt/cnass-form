@@ -450,7 +450,7 @@ const CHECK_URL  = '{{ route("verify.check") }}';
 const SUBMIT_URL = '{{ route("submit") }}';
 const DL_BASE    = '{{ url("/download") }}';
 const CSRF       = '{{ csrf_token() }}';
-const IS_UPDATE  = {{ $existing ? 'true' : 'false' }};
+let IS_UPDATE    = {{ $existing ? 'true' : 'false' }};
 
 // ── Situation familiale ──────────────────────────────────────────────────────
 function toggleConjoint() {
@@ -702,11 +702,20 @@ function prefillDynamic() {
 }
 
 // ── Form submit ───────────────────────────────────────────────────────────────
+function setSubmitIdle() {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled    = false;
+    btn.textContent = IS_UPDATE ? 'Mettre à jour ma fiche' : 'Soumettre ma fiche';
+}
+function setSubmitLoading() {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled    = true;
+    btn.textContent = IS_UPDATE ? 'Mise à jour…' : 'Envoi en cours…';
+}
+
 document.getElementById('cnass-form').addEventListener('submit', async function (e) {
     e.preventDefault();
-    const btn = document.getElementById('submit-btn');
-    btn.disabled = true;
-    btn.textContent = IS_UPDATE ? 'Mise à jour…' : 'Envoi en cours…';
+    setSubmitLoading();
     hideEl('alert-form-error');
     try {
         const fd   = new FormData(this);
@@ -718,23 +727,27 @@ document.getElementById('cnass-form').addEventListener('submit', async function 
             document.getElementById('success-name').textContent  = name;
             const dl = document.getElementById('dl-link');
             if (dl) dl.href = DL_BASE + '/' + data.submission_id;
+            // From here on every save is an update.
+            IS_UPDATE = true;
+            // Reset the button to its idle state so a later "Modifier"
+            // doesn't drop the user back onto a stuck "Mise à jour…" button.
+            setSubmitIdle();
             hideEl('panel-form');
             showEl('panel-download');
         } else {
             showErr('alert-form-error', data.message ?? 'Une erreur est survenue.');
-            btn.disabled = false;
-            btn.textContent = IS_UPDATE ? 'Mettre à jour ma fiche' : 'Soumettre ma fiche';
+            setSubmitIdle();
         }
     } catch {
         showErr('alert-form-error', 'Erreur réseau. Veuillez réessayer.');
-        btn.disabled = false;
-        btn.textContent = IS_UPDATE ? 'Mettre à jour ma fiche' : 'Soumettre ma fiche';
+        setSubmitIdle();
     }
 });
 
 function showForm() {
     hideEl('panel-download');
     showEl('panel-form');
+    setSubmitIdle();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
