@@ -101,7 +101,12 @@
         /* Inputs row */
         .input-row { display: flex; gap: 10px; }
         .input-row input { flex: 1; }
+        .input-row .btn { white-space: nowrap; }
         .otp-input { letter-spacing: .35em; font-size: 1.1rem; text-align: center; }
+        @media (max-width: 560px) {
+            .input-row { flex-direction: column; align-items: stretch; }
+            .input-row .btn { width: 100%; padding: 12px; }
+        }
 
         /* OTP info block (phone + expiry) */
         .otp-info { display: flex; align-items: stretch; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9px; padding: 14px 18px; margin-bottom: 22px; gap: 18px; }
