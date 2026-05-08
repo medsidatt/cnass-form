@@ -29,6 +29,16 @@
         .btn { display: inline-block; padding: 5px 12px; border-radius: 4px; font-size: .8rem; text-decoration: none; }
         .btn-view { background: #1a3a6e; color: #fff; }
         .btn-view:hover { background: #14316a; }
+
+        /* Shareable form link */
+        .share-card { background: #fff; border: 1px solid #bae6fd; border-left: 4px solid #0ea5e9; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 6px rgba(0,0,0,.04); }
+        .share-card-left { flex: 1; min-width: 240px; }
+        .share-label { font-size: .72rem; color: #0369a1; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+        #share-url { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 9px 12px; font-size: .88rem; background: #f8fafc; color: #1e293b; font-family: 'Segoe UI', monospace; }
+        #share-url:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,.15); }
+        .btn-copy { background: #0ea5e9; color: #fff; border: none; border-radius: 7px; padding: 11px 22px; font-size: .85rem; font-weight: 700; cursor: pointer; transition: background .15s; white-space: nowrap; min-width: 130px; }
+        .btn-copy:hover { background: #0284c7; }
+        .btn-copy.copied { background: #16a34a; }
     </style>
 </head>
 <body>
@@ -54,6 +64,17 @@
 </div>
 
 <div class="content">
+    {{-- Shareable form link --}}
+    <div class="share-card">
+        <div class="share-card-left">
+            <div class="share-label">Lien à partager avec les employés</div>
+            <input type="text" id="share-url" value="{{ route('form') }}" readonly aria-label="URL du formulaire">
+        </div>
+        <button type="button" class="btn-copy" id="btn-copy" onclick="copyShareUrl()">
+            <span id="btn-copy-label">Copier le lien</span>
+        </button>
+    </div>
+
     <div class="stats">
         <div class="stat-card">
             <div class="value">{{ $totals['all'] }}</div>
@@ -107,5 +128,32 @@
     <div style="margin-top:18px">{{ $submissions->links() }}</div>
     @endif
 </div>
+
+<script>
+async function copyShareUrl() {
+    const input = document.getElementById('share-url');
+    const btn   = document.getElementById('btn-copy');
+    const label = document.getElementById('btn-copy-label');
+    const url   = input.value;
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(url);
+        } else {
+            input.select();
+            input.setSelectionRange(0, url.length);
+            document.execCommand('copy');
+            input.blur();
+        }
+        btn.classList.add('copied');
+        label.textContent = '✓ Lien copié';
+        setTimeout(() => { btn.classList.remove('copied'); label.textContent = 'Copier le lien'; }, 2200);
+    } catch (e) {
+        // Fallback: just select the field for manual copy.
+        input.select();
+        input.setSelectionRange(0, url.length);
+        label.textContent = 'Ctrl+C pour copier';
+    }
+}
+</script>
 </body>
 </html>

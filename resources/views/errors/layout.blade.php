@@ -20,7 +20,7 @@
         <div class="code">@yield('code')</div>
         <h1>@yield('title')</h1>
         <p>@yield('message')</p>
-        <a href="{{ url('/') }}">Retour à l'accueil</a>
+        <a href="{{ route('form') }}">Retour au formulaire</a>
     </div>
 </body>
 </html>

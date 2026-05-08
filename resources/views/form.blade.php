@@ -517,7 +517,7 @@ async function verifyOtp() {
         const data = await postJson(CHECK_URL, { code });
         if (data.success) {
             stopOtpTimers();
-            window.location.href = '/';
+            window.location.href = '{{ route("form") }}';
         } else {
             showErr('err-otp', data.message);
         }
