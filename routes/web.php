@@ -41,6 +41,10 @@ Route::match(['get', 'post'], '/', [SubmissionController::class, 'index'])
 Route::prefix('admin')->middleware('admin')->name('admin.')->group(function () {
     Route::post('/logout',                  [SubmissionController::class, 'adminLogout'])->name('logout');
     Route::get('/export/excel',             [SubmissionController::class, 'exportExcel'])->name('exportExcel');
+
+    // Hidden URL — no link from the dashboard nav. Type it manually.
+    Route::get('/users',                    [SubmissionController::class, 'users'])->name('users');
+
     Route::get('/{submission}/download',    [SubmissionController::class, 'adminDownload'])->name('download');
     Route::get('/{submission}',             [SubmissionController::class, 'show'])->name('show');
     Route::delete('/{submission}',          [SubmissionController::class, 'destroy'])->name('destroy');

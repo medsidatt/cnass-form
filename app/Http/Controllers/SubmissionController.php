@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Models\Submission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -215,6 +216,29 @@ class SubmissionController extends Controller
     {
         $submissions = Submission::latest()->paginate(50);
         return view('admin.index', compact('submissions'));
+    }
+
+    /**
+     * Hidden admin page (no nav link) — lists every phone that received an
+     * OTP, showing whether they verified and whether they submitted.
+     */
+    public function users()
+    {
+        $submittedPhones = Submission::whereNotNull('phone')
+            ->pluck('nom_complet', 'phone');
+
+        $employees = Employee::orderByDesc('last_sent_at')->paginate(100);
+
+        $totals = [
+            'all'           => Employee::count(),
+            'verified'      => Employee::whereNotNull('verified_at')->count(),
+            'submitted'     => Employee::whereIn('phone', $submittedPhones->keys())->count(),
+            'not_submitted' => Employee::whereNotNull('verified_at')
+                ->whereNotIn('phone', $submittedPhones->keys())
+                ->count(),
+        ];
+
+        return view('admin.users', compact('employees', 'submittedPhones', 'totals'));
     }
 
     public function show(Submission $submission)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Twilio\Rest\Client;
@@ -49,6 +50,11 @@ class VerifyController extends Controller
             'otp_expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES)->timestamp,
             'otp_attempts'   => 0,
         ]);
+
+        $employee = Employee::firstOrNew(['phone' => $phone]);
+        $employee->send_count   = (int) $employee->send_count + 1;
+        $employee->last_sent_at = now();
+        $employee->save();
 
         if ($this->isDevMode()) {
             Log::info('OTP send (dev mode)', ['phone' => $phone]);
@@ -183,6 +189,8 @@ class VerifyController extends Controller
             'phone_verified' => true,
             'verified_phone' => $phone,
         ]);
+
+        Employee::where('phone', $phone)->update(['verified_at' => now()]);
     }
 
     /**
