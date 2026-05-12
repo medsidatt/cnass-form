@@ -680,8 +680,8 @@ let _expiryTimer = null;
 let _resendTimer = null;
 
 async function sendOtp() {
-    let digits = document.getElementById('phone-input').value.trim().replace(/\s+/g, '');
-    digits = digits.replace(/^\+?2{0,1}2{0,1}2{0,1}/, '').replace(/^0+/, '');
+    let digits = document.getElementById('phone-input').value.trim().replace(/[\s\-]+/g, '');
+    digits = digits.replace(/^(?:\+222|00222|222(?=\d{8}$))/, '').replace(/^0+/, '');
     const phone = digits;
     if (!phone) return;
     const btn = document.getElementById('btn-send');
